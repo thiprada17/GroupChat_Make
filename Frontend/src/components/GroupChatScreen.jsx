@@ -4,6 +4,8 @@ import useChatSession from '../hooks/useChatSession.js';
 import AddBillScreen from './AddBillScreen.jsx';
 import BillSessionCard from './BillSessionCard.jsx';
 import ChatMessageBubble from './ChatMessageBubble.jsx';
+import GroupSettingsScreen from './GroupSettingsScreen.jsx';
+import GroupCreateScreen from './GroupCreateScreen.jsx';
 
 function Avatar({ user, size = 30 }) {
   return <span className="grid shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white" style={{ background: user?.color || '#204066', width: size, height: size }}>{user?.id === 'thong' ? 't' : ''}</span>;
@@ -16,7 +18,7 @@ function ActionBar({ onTransfer, onAddBill }) {
   </footer>;
 }
 
-export default function GroupChatScreen({ group, onBack }) {
+export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 'chat', contacts = [], onCloseSettings, onManageBack, onEditGroupName, onManageMembers, onDeleteGroup, onManageComplete }) {
   const creatorId = group.createdById || group.members[0]?.id || 'thong';
   const chat = useChatSession(group.members, creatorId);
   const [showBill, setShowBill] = useState(false);
@@ -26,7 +28,6 @@ export default function GroupChatScreen({ group, onBack }) {
   const [showTransfer, setShowTransfer] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
   const [recipientId, setRecipientId] = useState(group.members.find(person => person.id !== 'thong')?.id || '');
-  const firstCollectionIndex = chat.messages.findIndex(item => item.type === 'collection');
 
   async function sendMessage() {
     if (!message.trim()) return;
@@ -37,15 +38,18 @@ export default function GroupChatScreen({ group, onBack }) {
     event.preventDefault();
     const amount = Number(transferAmount);
     if (!Number.isFinite(amount) || amount <= 0) return;
-    const result = await chat.transfer(amount, recipientId);
+    const result = await chat.transfer(amount, recipientId, currentUser);
     if (result) { setTransferAmount(''); setShowTransfer(false); }
   }
+
+  if (view === 'settings') return <GroupSettingsScreen group={group} onBack={onCloseSettings} onEditGroupName={onEditGroupName} onManageMembers={onManageMembers} onDeleteGroup={onDeleteGroup}/>;
+  if (view === 'manage') return <GroupCreateScreen contacts={contacts} initialGroup={group} onBack={onManageBack} onGroupCreated={onManageComplete}/>;
 
   return <main className="relative mx-auto flex h-[100dvh] min-h-[540px] max-w-3xl flex-col overflow-hidden bg-[#EFF7F2] sm:my-5 sm:h-[calc(100dvh-40px)] sm:rounded-3xl sm:shadow-2xl">
     <header className="relative z-20 flex h-[100px] shrink-0 items-center justify-between bg-[#8AE3FF] px-3 shadow-sm">
       <button type="button" aria-label="Back" onClick={onBack} className="grid h-10 w-10 place-items-center text-[#00B8E6]"><ArrowLeft size={25}/></button>
       <button type="button" onClick={() => setShowMembers(value => !value)} className="flex flex-1 items-center gap-2 text-left"><span className="sr-only">สมาชิก</span><b className="text-base font-bold text-[#1A3048]">{group.name}</b><ChevronDown size={14} className="text-[#00B8E6]"/></button>
-      <button type="button" aria-label="ตัวเลือก" onClick={() => setShowMembers(value => !value)} className="grid h-10 w-10 place-items-center text-[#00B8E6]"><MoreHorizontal size={22}/></button>
+      <button type="button" aria-label="Group settings" onClick={onOpenSettings} className="grid h-10 w-10 place-items-center text-[#00B8E6]"><MoreHorizontal size={22}/></button>
     </header>
 
     {showMembers && <section className="absolute right-3 top-[75px] z-30 w-56 rounded-xl bg-white p-3 shadow-lg"><b className="px-2 text-xs">ทดลองดูเป็นสมาชิก</b>{group.members.map(person => <button type="button" key={person.id} onClick={() => { setCurrentUser(person.id); setShowMembers(false); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-xs hover:bg-cyan-50"><Avatar user={person} size={25}/>{person.name}{currentUser === person.id && <Check size={14} className="ml-auto text-teal-500"/>}</button>)}</section>}
@@ -53,8 +57,8 @@ export default function GroupChatScreen({ group, onBack }) {
     <section className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#8AE3FF] via-[#D6F4EC] to-[#EFF7F2] px-3 pb-5 pt-3 sm:px-8" aria-label="Chat messages">
       {chat.status === 'idle' && chat.messages.length === 0 && <div className="flex h-full items-center justify-center"><p className="rounded-xl bg-white/70 px-4 py-2 text-sm text-slate-500">เริ่มพูดคุย หรือเพิ่มบิลเพื่อหารค่าอาหาร</p></div>}
       {chat.messages.map((item, index) => <React.Fragment key={`${item.id}-${index}`}>
-        {item.type === 'bill' ? <div className="my-2 w-full max-w-[350px]"><div className="mb-2 flex items-center gap-2"><Avatar user={group.members.find(person => person.id === creatorId) || group.members[0]}/><small className="text-[10px] text-[#708A8E]">{group.members.find(person => person.id === creatorId)?.name || 'thong'}</small></div><BillSessionCard title={chat.title} creatorId={creatorId} items={chat.items} members={group.members} status={chat.status} shares={chat.shares} total={chat.total} currentUser={currentUser} paid={chat.paid} busy={chat.busy} onToggle={chat.toggleItem} onClose={chat.closeSession} onEdit={() => setShowBill(true)}/></div>
-          : <>{item.type === 'collection' && index === firstCollectionIndex && <div className="my-2 flex items-center gap-2"><Avatar user={group.members.find(person => person.id === creatorId) || group.members[0]}/><small className="text-[10px] text-[#708A8E]">{group.members.find(person => person.id === creatorId)?.name || 'thong'}</small></div>}<ChatMessageBubble message={item} people={group.members} currentUser={currentUser} onPay={chat.pay} busy={chat.busy}/></>}
+        {item.type === 'bill' ? <div className={'my-2 flex w-full max-w-[350px] flex-col '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'ml-auto items-end' : 'mr-auto items-start')}><div className={'mb-2 flex items-center gap-2 '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'flex-row-reverse' : '')}><Avatar user={group.members.find(person => person.id === item.senderId) || group.members[0]}/><small className="text-[10px] text-[#708A8E]">{group.members.find(person => person.id === item.senderId)?.name || 'thong'}</small></div><BillSessionCard title={chat.title} creatorId={creatorId} items={chat.items} members={group.members} memberSummaries={chat.memberSummaries} status={chat.status} shares={chat.shares} total={chat.total} currentUser={currentUser} paid={chat.paid} busy={chat.busy} onToggle={chat.toggleItem} onClose={chat.closeSession} onEdit={() => setShowBill(true)}/></div>
+          : <ChatMessageBubble message={item} people={group.members} currentUser={currentUser} onPay={chat.pay} busy={chat.busy}/>}
       </React.Fragment>)}
       {chat.error && <div role="alert" className="my-3 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{chat.error}<button type="button" onClick={() => chat.setError('')}><X size={15}/></button></div>}
     </section>

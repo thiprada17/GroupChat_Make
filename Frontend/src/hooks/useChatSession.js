@@ -13,16 +13,22 @@ export default function useChatSession(members, creatorId = 'thong') {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = items.reduce((sum, item) => sum + Math.round(item.price * 100), 0) / 100;
-  const shares = useMemo(() => {
-    const totals = Object.fromEntries(members.map(person => [person.id, 0]));
-    items.forEach(item => {
-      const ids = item.assignedUserIds.filter(id => id in totals);
-      if (!ids.length) return;
-      const cents = Math.round(item.price * 100), base = Math.floor(cents / ids.length), remainder = cents % ids.length;
-      ids.forEach((id, index) => { totals[id] += (base + (index < remainder ? 1 : 0)) / 100; });
-    });
-    return totals;
-  }, [items, members]);
+  const memberSummaries = useMemo(() => members
+    .filter(member => items.some(item => (item.assignedUserIds || []).includes(member.id)))
+    .map(member => {
+      const totalAmount = items.reduce((sum, item) => {
+        const assignedUserIds = item.assignedUserIds || [];
+        if (!assignedUserIds.includes(member.id) || assignedUserIds.length === 0) return sum;
+        return sum + Number(item.price) / assignedUserIds.length;
+      }, 0);
+      return {
+        userId: member.id,
+        name: member.name,
+        totalAmount: Number(totalAmount.toFixed(2)),
+        isPaid: member.id === creatorId || Boolean(paid[member.id]),
+      };
+    }), [items, members, creatorId, paid]);
+  const shares = useMemo(() => Object.fromEntries(memberSummaries.map(summary => [summary.userId, summary.totalAmount])), [memberSummaries]);
 
   async function startSession(bill) {
     setBusy(true); setError('');
@@ -30,16 +36,18 @@ export default function useChatSession(members, creatorId = 'thong') {
       const saved = await billService.saveBill(bill);
       setItems(saved.items.map(item => ({ ...item, assignedUserIds: [...item.assignedUserIds] })));
       setTitle(saved.title || 'ค่ากิน'); setPaid({}); setStatus('open');
-      setMessages([{ id: newId(), type: 'divider', content: 'เปิด Session' }, { id: newId(), type: 'bill' }]);
+      setMessages([{ id: newId(), type: 'divider', content: 'เปิด Session' }, { id: newId(), type: 'bill', senderId: creatorId, billSession: { createdById: creatorId } }]);
     } catch (cause) { setError(cause.message); throw cause; }
     finally { setBusy(false); }
   }
 
   function toggleItem(itemId, userId) {
     if (status !== 'open') return;
+    const selectedUserId = typeof userId === 'string' ? userId : userId?.id;
+    if (!selectedUserId) return;
     setItems(current => current.map(item => item.id !== itemId ? item : {
       ...item,
-      assignedUserIds: item.assignedUserIds.includes(userId) ? item.assignedUserIds.filter(id => id !== userId) : [...item.assignedUserIds, userId],
+      assignedUserIds: (item.assignedUserIds || []).includes(selectedUserId) ? item.assignedUserIds.filter(id => id !== selectedUserId) : [...(item.assignedUserIds || []), selectedUserId],
     }));
   }
 
@@ -53,11 +61,11 @@ export default function useChatSession(members, creatorId = 'thong') {
     try {
       await billService.closeSession({ items, shares });
       setStatus('closed');
-      const collectionMessages = members.filter(person => person.id !== creatorId && (shares[person.id] || 0) > 0).map(person => ({ id: newId(), type: 'collection', senderId: creatorId, recipientId: person.id, amount: shares[person.id] }));
+      const collectionMessages = memberSummaries.filter(summary => !summary.isPaid && summary.totalAmount > 0).map(summary => ({ id: newId(), type: 'collection', senderId: creatorId, recipientId: summary.userId, amount: summary.totalAmount }));
       setMessages(current => [...current.filter(message => message.type !== 'bill'),
         { id: newId(), type: 'status', content: 'กำลังสรุปบิล...' },
         { id: newId(), type: 'divider', content: 'ปิด Session' },
-        { id: newId(), type: 'bill' },
+        { id: newId(), type: 'bill', senderId: creatorId, billSession: { createdById: creatorId } },
         ...collectionMessages,
       ]);
     } catch (cause) { setError(cause.message); }
@@ -74,15 +82,15 @@ export default function useChatSession(members, creatorId = 'thong') {
     finally { setBusy(false); }
   }
 
-  async function transfer(amount, recipientId) {
+  async function transfer(amount, recipientId, senderId = creatorId) {
     setBusy(true); setError('');
     try {
       const result = await paymentService.transfer(amount);
-      setMessages(current => [...current, { id: newId(), type: 'receipt', senderId: 'thong', recipientId, amount: result.amount }]);
+      setMessages(current => [...current, { id: newId(), type: 'receipt', senderId, recipientId, amount: result.amount }]);
       return result;
     } catch (cause) { setError(cause.message); return null; }
     finally { setBusy(false); }
   }
 
-  return { status, items, title, messages, paid, busy, error, setError, total, shares, startSession, toggleItem, send, closeSession, pay, transfer };
+  return { status, items, title, messages, paid, busy, error, setError, total, shares, memberSummaries, startSession, toggleItem, send, closeSession, pay, transfer };
 }

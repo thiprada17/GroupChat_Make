@@ -16,10 +16,10 @@ function EditButton({ onClick, label }) {
   return <button type="button" aria-label={label} onClick={onClick} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#00B8E6] text-white hover:bg-[#00A3CC]"><Pencil size={16} strokeWidth={2.2}/></button>;
 }
 
-export default function GroupCreateScreen({ contacts = fallbackContacts, onBack, onGroupCreated, onCreate }) {
+export default function GroupCreateScreen({ contacts = fallbackContacts, onBack, onGroupCreated, onCreate, initialGroup }) {
   const [step, setStep] = useState(1);
-  const [selectedMemberIds, setSelectedMemberIds] = useState(['nadia', 'jinny']);
-  const [groupName, setGroupName] = useState('ค่ากิน');
+  const [selectedMemberIds, setSelectedMemberIds] = useState(() => initialGroup?.members?.filter(person => person.id !== creator.id).map(person => person.id) || ['nadia', 'jinny']);
+  const [groupName, setGroupName] = useState(initialGroup?.name || 'ค่ากิน');
   const [query, setQuery] = useState('');
   const visibleContacts = useMemo(() => contacts.filter(user => `${user.name} ${user.phone || ''}`.toLowerCase().includes(query.trim().toLowerCase())), [contacts, query]);
   const selectedMembers = contacts.filter(user => selectedMemberIds.includes(user.id));
@@ -32,7 +32,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
     const name = groupName.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 40) || 'ค่ากิน';
     const members = [creator, ...selectedMembers];
     const callback = onGroupCreated || onCreate;
-    callback?.({ id: crypto.randomUUID(), name, members });
+    callback?.({ id: initialGroup?.id || crypto.randomUUID(), name, members, createdById: initialGroup?.createdById || creator.id });
   }
 
   return <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-white pb-24 text-[#1A3048]">

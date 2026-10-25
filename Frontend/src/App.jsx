@@ -33,12 +33,12 @@ export default function App() {
   function selectGroup(groupId) {
     const chosen = demoGroups[groupId] || demoGroups.food;
     const members = chosen.members.map(id => [...INITIAL_MEMBERS, ...CONTACTS].find(person => person.id === id)).filter(Boolean);
-    setGroup({ name: chosen.name, members });
+    setGroup({ id: groupId, name: chosen.name, members, createdById: 'thong' });
     setScreen('chat');
   }
 
   if (screen === 'create') return <GroupCreateScreen contacts={CONTACTS} onBack={() => setScreen('home')} onGroupCreated={created => { setGroup(created); setScreen('chat'); }} />;
-  if (screen === 'chat') return <GroupChatScreen group={group} onBack={() => setScreen('home')} />;
+  if (screen === 'chat' || screen === 'settings' || screen === 'manage') return <GroupChatScreen group={group} view={screen} contacts={CONTACTS} onBack={() => setScreen('home')} onOpenSettings={() => setScreen('settings')} onCloseSettings={() => setScreen('chat')} onManageBack={() => setScreen('settings')} onEditGroupName={() => { const name = window.prompt('ชื่อกลุ่ม', group.name); if (name?.trim()) setGroup(current => ({ ...current, name: name.trim().slice(0, 40) })); }} onManageMembers={() => setScreen('manage')} onDeleteGroup={groupId => { setGroup(current => current.id === groupId ? { name: 'ค่ากิน', members: INITIAL_MEMBERS } : current); setScreen('home'); }} onManageComplete={updated => { setGroup(updated); setScreen('settings'); }} />;
   if (screen === 'groups') return <GroupChatListScreen onBack={() => setScreen('home')} onSelectGroup={selectGroup} onCreateGroup={() => setScreen('create')} />;
   if (screen === 'pocket') return <main className="mx-auto min-h-screen max-w-md bg-white p-5"><button className="mb-8 text-cyan-600" onClick={() => setScreen('home')}><ArrowLeft /></button><span className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-[#E8F8FF] text-cyan-500"><Cloud /></span><h1 className="mt-4 text-center text-xl font-bold text-gray-800">Cloud Pocket</h1><p className="mt-2 text-center text-sm text-gray-500">{pocketId === 'create' ? 'สร้าง Cloud Pocket' : 'abc'}</p><button className="mx-auto mt-8 flex items-center gap-2 rounded-xl bg-cyan-500 px-5 py-3 font-semibold text-white" onClick={() => setPocketId('create')}><Plus size={18}/> เพิ่ม Cloud</button></main>;
 
