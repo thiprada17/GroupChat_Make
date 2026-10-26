@@ -65,7 +65,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
         })}
       </section>
       <footer className="fixed inset-x-0 bottom-0 mx-auto flex h-[97px] w-full max-w-md items-center justify-center bg-[#8AE3FF]">
-        <button type="button" disabled={!selectedMemberIds.length} onClick={() => setStep(2)} className="h-[34px] w-[min(202px,calc(100%-48px))] rounded-full bg-[#00B8E6] text-lg font-bold text-white shadow-md transition-colors hover:bg-[#00A3CC] disabled:opacity-50">ต่อไป</button>
+        <button type="button" disabled={!selectedMemberIds.length} onClick={() => setStep(2)} className="h-[34px] w-[min(202px,calc(100%-48px))] rounded-full bg-[#00B8E6] text-lg font-bold text-white transition-colors hover:bg-[#00A3CC] disabled:opacity-50">ต่อไป</button>
       </footer>
     </> : <>
       <section className="px-4 pt-6">
@@ -90,7 +90,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
         </div>
       </section>
       <footer className="fixed inset-x-0 bottom-0 mx-auto flex h-[97px] w-full max-w-md items-center justify-center bg-[#8AE3FF]">
-        <button type="button" onClick={createGroup} className="h-[34px] w-[min(202px,calc(100%-48px))] rounded-full bg-[#00B8E6] text-lg font-bold text-white shadow-md transition-colors hover:bg-[#00A3CC]">สร้าง</button>
+        <button type="button" onClick={createGroup} className="h-[34px] w-[min(202px,calc(100%-48px))] rounded-full bg-[#00B8E6] text-lg font-bold text-white transition-colors hover:bg-[#00A3CC]">สร้าง</button>
       </footer>
     </>}
   </main>;

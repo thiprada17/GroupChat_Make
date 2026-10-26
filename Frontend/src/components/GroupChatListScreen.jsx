@@ -38,7 +38,7 @@ export default function GroupChatListScreen({ onBack, onSelectGroup, onCreateGro
     </section>
 
     <footer className="fixed inset-x-0 bottom-0 mx-auto flex h-[97px] w-full max-w-md items-center justify-center bg-[#8AE3FF]">
-      <button type="button" onClick={onCreateGroup} className="flex h-[34px] w-[min(202px,calc(100%-48px))] items-center justify-center rounded-full bg-[#00B8E6] text-lg font-bold text-white shadow-md transition-colors hover:bg-[#00A3CC]">เพิ่ม Group Chat</button>
+      <button type="button" onClick={onCreateGroup} className="flex h-[34px] w-[min(202px,calc(100%-48px))] items-center justify-center rounded-full bg-[#00B8E6] text-lg font-bold text-white transition-colors hover:bg-[#00A3CC]">เพิ่ม Group Chat</button>
     </footer>
   </main>;
 }

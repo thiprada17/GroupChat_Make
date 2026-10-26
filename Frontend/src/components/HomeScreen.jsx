@@ -54,7 +54,7 @@ export default function HomeScreen({ onSelectGroup, onCreateGroup, onSelectPocke
         <div className="grid grid-cols-3 gap-x-4 gap-y-6 px-6 py-4">
           {groups.map(group => <GroupTile key={group.id} group={group} onClick={onSelectGroup} />)}
           <button type="button" onClick={onCreateGroup} className="min-w-0 text-center">
-            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#8AE3FF] bg-[#E8F8FF] text-3xl font-light leading-none text-[#00B8E6]">+</span>
+            <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border bg-[#E9ECF1] text-3xl font-light leading-none text-[#00B8E6]">+</span>
             <span className="mt-2 block text-center text-xs font-semibold text-gray-700">สร้าง<br/>Group Chat</span>
           </button>
         </div>
@@ -67,7 +67,7 @@ export default function HomeScreen({ onSelectGroup, onCreateGroup, onSelectPocke
         <div className="grid grid-cols-4 gap-4 px-6 py-4">
           {pockets.map(pocket => <PocketTile key={pocket.id} pocket={pocket} onClick={onSelectPocket} />)}
           <button type="button" onClick={() => onSelectPocket('create')} className="min-w-0 text-center">
-            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-[#8AE3FF] bg-[#E8F8FF] text-2xl font-light leading-none text-[#00B8E6]">+</span>
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border bg-[#E9ECF1] text-2xl font-light leading-none text-[#00B8E6]">+</span>
             <span className="mt-2 block text-center text-xs font-semibold text-gray-700">สร้าง<br/>Cloud</span>
           </button>
         </div>
