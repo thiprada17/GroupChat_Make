@@ -180,3 +180,7 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 /Frontend/node_modules
+
+# Keep the backend's requested lib folder visible despite the generic Python lib/ rule
+!/Backend/src/lib/
+!/Backend/src/lib/**
