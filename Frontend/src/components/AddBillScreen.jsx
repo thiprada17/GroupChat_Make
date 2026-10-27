@@ -35,7 +35,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     setReceiptImage(imageUrl);
     setScanning(true);
     try {
-      const extracted = await scanReceipt();
+      const extracted = await scanReceipt(imageUrl);
       setItems(extracted.map(item => ({ ...item, price: String(item.price) })));
     } catch (cause) { setError(cause.message || 'อ่านใบเสร็จไม่สำเร็จ'); }
     finally { setScanning(false); }
@@ -98,3 +98,4 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     </footer>
   </main>;
 }
+
