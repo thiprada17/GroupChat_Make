@@ -8,13 +8,13 @@ import GroupChatListScreen from './components/GroupChatListScreen.jsx';
 const GROUPS_STORAGE_KEY = 'groupchat.groups.v1';
 
 export const CONTACTS = [
-  { id: 'nadia', name: 'nadia', color: '#ffc95e' },
-  { id: 'jinny', name: 'jinny', color: '#39824c' },
-  { id: 'user4', name: 'user4', color: '#a04141' },
+  { id: 'nadia', name: 'nadia', color: '#ffdf9f' },
+  { id: 'jinny', name: 'jinny', color: '#7db2a4' },
+  { id: 'user4', name: 'user4', color: '#c05c5c' },
   { id: 'user5', name: 'user5', color: 'rgb(194, 121, 185)' },
 ];
 export const INITIAL_MEMBERS = [
-  { id: 'thong', name: 'thong', color: '#294e74' },
+  { id: 'thong', name: 'thong', color: '#3d6994' },
   ...CONTACTS,
 ];
 
