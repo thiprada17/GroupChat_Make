@@ -1,21 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Search } from 'lucide-react';
+import GroupAvatar from './GroupAvatar.jsx';
 
-const defaultGroups = [
-  { id: 'food', name: 'ค่ากิน' },
-  { id: 'abc-1', name: 'abc' },
-  { id: 'chathai', name: 'ChaThai' },
-  { id: 'abc-2', name: 'abc' },
-  { id: 'abc-3', name: 'abc' },
-  { id: 'abc-4', name: 'abc' },
-  { id: 'abc-5', name: 'abc' },
-];
-
-export default function GroupChatListScreen({ onBack, onSelectGroup, onCreateGroup, groups = defaultGroups }) {
+export default function GroupChatListScreen({ onBack, onSelectGroup, onCreateGroup, groups = [] }) {
   const [query, setQuery] = useState('');
   const visibleGroups = useMemo(() => groups.filter(group => group.name.toLowerCase().includes(query.trim().toLowerCase())), [groups, query]);
 
-  return <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-white pb-24 text-[#1A3048]">
+  return <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-white pb-24 text-[#1A3048]">
     <header className="relative h-[161px] shrink-0 bg-[#8AE3FF] px-4 shadow-sm">
       <div className="absolute inset-x-2 top-[55px] flex h-10 items-center">
         <button type="button" aria-label="Back" onClick={onBack} className="grid h-10 w-10 place-items-center text-2xl text-[#00B8E6] transition-opacity hover:opacity-80"><ArrowLeft size={25} strokeWidth={2}/></button>
@@ -30,7 +21,7 @@ export default function GroupChatListScreen({ onBack, onSelectGroup, onCreateGro
     <section aria-label="Group chats" className="flex-1 overflow-y-auto">
       <div className="grid grid-cols-4 gap-x-2 gap-y-8 px-3 pt-10">
         {visibleGroups.map(group => <button type="button" key={group.id} onClick={() => onSelectGroup(group.id)} className="min-w-0 text-center">
-          <span className="mx-auto block h-[50px] w-[50px] rounded-full bg-[#D9D9D9] transition-opacity hover:opacity-90" />
+          <GroupAvatar members={group.members} size={50} className="mx-auto transition-opacity hover:opacity-90" />
           <span className="mt-2 block truncate text-center text-sm font-normal text-gray-700">{group.name}</span>
         </button>)}
         {visibleGroups.length === 0 && <p className="col-span-4 py-8 text-center text-sm text-gray-400">ไม่พบ Group Chat</p>}

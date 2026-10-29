@@ -1,15 +1,23 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { billService } from '../services/billService.js';
 import { chatService } from '../services/chatService.js';
 import { paymentService } from '../services/paymentService.js';
 
 const newId = () => crypto.randomUUID();
-export default function useChatSession(members, creatorId = 'thong') {
-  const [status, setStatus] = useState('idle');
-  const [items, setItems] = useState([]);
-  const [title, setTitle] = useState('ค่ากิน');
-  const [messages, setMessages] = useState([]);
-  const [paid, setPaid] = useState({});
+export default function useChatSession(members, creatorId = 'thong', groupId = 'default') {
+  const storageKey = `groupchat.history.v1.${groupId}`;
+  const [initialSession] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey));
+      if (saved && ['idle', 'open', 'closed'].includes(saved.status) && Array.isArray(saved.items) && Array.isArray(saved.messages)) return saved;
+    } catch { /* Start an empty chat when storage is empty or invalid. */ }
+    return null;
+  });
+  const [status, setStatus] = useState(() => initialSession?.status || 'idle');
+  const [items, setItems] = useState(() => initialSession?.items || []);
+  const [title, setTitle] = useState(() => initialSession?.title || 'ค่ากิน');
+  const [messages, setMessages] = useState(() => initialSession?.messages || []);
+  const [paid, setPaid] = useState(() => initialSession?.paid || {});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const total = items.reduce((sum, item) => sum + Math.round(item.price * 100), 0) / 100;
@@ -29,6 +37,11 @@ export default function useChatSession(members, creatorId = 'thong') {
       };
     }), [items, members, creatorId, paid]);
   const shares = useMemo(() => Object.fromEntries(memberSummaries.map(summary => [summary.userId, summary.totalAmount])), [memberSummaries]);
+
+  useEffect(() => {
+    try { localStorage.setItem(storageKey, JSON.stringify({ status, items, title, messages, paid })); }
+    catch { /* Chat stays usable if browser storage is full or unavailable. */ }
+  }, [storageKey, status, items, title, messages, paid]);
 
   async function startSession(bill) {
     setBusy(true); setError('');

@@ -20,7 +20,7 @@ function ActionBar({ onTransfer, onAddBill }) {
 
 export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 'chat', contacts = [], onCloseSettings, onManageBack, onEditGroupName, onManageMembers, onDeleteGroup, onManageComplete }) {
   const creatorId = group.createdById || group.members[0]?.id || 'thong';
-  const chat = useChatSession(group.members, creatorId);
+  const chat = useChatSession(group.members, creatorId, group.id);
   const [showBill, setShowBill] = useState(false);
   const [currentUser, setCurrentUser] = useState('thong');
   const [showMembers, setShowMembers] = useState(false);
@@ -45,7 +45,7 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
   if (view === 'settings') return <GroupSettingsScreen group={group} onBack={onCloseSettings} onEditGroupName={onEditGroupName} onManageMembers={onManageMembers} onDeleteGroup={onDeleteGroup}/>;
   if (view === 'manage') return <GroupCreateScreen contacts={contacts} initialGroup={group} onBack={onManageBack} onGroupCreated={onManageComplete}/>;
 
-  return <main className="relative mx-auto flex h-[100dvh] min-h-[540px] max-w-3xl flex-col overflow-hidden bg-[#EFF7F2] sm:my-5 sm:h-[calc(100dvh-40px)] sm:rounded-3xl sm:shadow-2xl">
+  return <main className="relative mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-[#EFF7F2]">
     <header className="relative z-20 flex h-[100px] shrink-0 items-center justify-between bg-[#8AE3FF] px-3 shadow-sm">
       <button type="button" aria-label="Back" onClick={onBack} className="grid h-10 w-10 place-items-center text-[#00B8E6]"><ArrowLeft size={25}/></button>
       <button type="button" onClick={() => setShowMembers(value => !value)} className="flex flex-1 items-center gap-2 text-left"><span className="sr-only">สมาชิก</span><b className="text-base font-bold text-[#1A3048]">{group.name}</b><ChevronDown size={14} className="text-[#00B8E6]"/></button>
@@ -68,6 +68,6 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
 
     {showBill && <AddBillScreen groupName={group.name} busy={chat.busy} onBack={() => setShowBill(false)} onConfirmBill={async bill => { await chat.startSession(bill); setShowBill(false); }} />}
 
-    {showTransfer && <div className="fixed inset-0 z-40 grid items-end bg-slate-900/50 backdrop-blur-sm sm:place-items-center sm:p-5"><form onSubmit={sendTransfer} className="w-full rounded-t-3xl bg-white p-5 sm:max-w-sm sm:rounded-3xl"><div className="mb-4 flex items-center justify-between"><h2 className="font-bold">โอนเงิน</h2><button type="button" onClick={() => setShowTransfer(false)}><X size={19}/></button></div><label className="mb-3 block text-xs">ผู้รับ<select value={recipientId} onChange={event => setRecipientId(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm">{group.members.filter(person => person.id !== currentUser).map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label><label className="block text-xs">จำนวนเงิน<input type="number" min="0.01" step="0.01" value={transferAmount} onChange={event => setTransferAmount(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm" placeholder="0.00"/></label><button className="mt-4 w-full rounded-xl bg-[#00B8E6] py-2.5 font-bold text-white">ยืนยันการโอน</button></form></div>}
+    {showTransfer && <div className="fixed inset-0 z-40 mx-auto grid w-full max-w-md items-end bg-slate-900/50 backdrop-blur-sm sm:place-items-center sm:p-5"><form onSubmit={sendTransfer} className="w-full rounded-t-3xl bg-white p-5 sm:rounded-3xl"><div className="mb-4 flex items-center justify-between"><h2 className="font-bold">โอนเงิน</h2><button type="button" onClick={() => setShowTransfer(false)}><X size={19}/></button></div><label className="mb-3 block text-xs">ผู้รับ<select value={recipientId} onChange={event => setRecipientId(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm">{group.members.filter(person => person.id !== currentUser).map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label><label className="block text-xs">จำนวนเงิน<input type="number" min="0.01" step="0.01" value={transferAmount} onChange={event => setTransferAmount(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm" placeholder="0.00"/></label><button className="mt-4 w-full rounded-xl bg-[#00B8E6] py-2.5 font-bold text-white">ยืนยันการโอน</button></form></div>}
   </main>;
 }

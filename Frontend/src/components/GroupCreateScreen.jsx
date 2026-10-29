@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Check, Pencil, Plus, Search, UserRound } from 'lucide-react';
+import GroupAvatar from './GroupAvatar.jsx';
 
 const fallbackContacts = [
   { id: 'nadia', name: 'nadia', color: '#F2C04D' },
@@ -35,7 +36,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
     callback?.({ id: initialGroup?.id || crypto.randomUUID(), name, members, createdById: initialGroup?.createdById || creator.id });
   }
 
-  return <main className="relative mx-auto flex min-h-screen w-full max-w-md flex-col bg-white pb-24 text-[#1A3048]">
+  return <main className="relative mx-auto flex min-h-[100dvh] w-full max-w-md flex-col bg-white pb-24 text-[#1A3048]">
     <header className={'relative shrink-0 bg-[#8AE3FF] shadow-sm '+(step === 1 ? 'h-[161px]' : 'h-[105px]')}>
       <div className="absolute inset-x-2 top-[55px] flex h-10 items-center">
         <button type="button" aria-label="Back" onClick={() => step === 2 ? setStep(1) : onBack?.()} className="grid h-10 w-10 place-items-center text-[#00B8E6]"><ArrowLeft size={25} strokeWidth={2}/></button>
@@ -70,7 +71,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
     </> : <>
       <section className="px-4 pt-6">
         <div className="flex items-center gap-4 border-b border-gray-200 px-1 pb-6">
-          <span className="h-16 w-16 shrink-0 rounded-full" style={{ background: 'conic-gradient(#387F47 0 25%, #F2C04D 25% 50%, #FFFFFF 50% 75%, #294E74 75% 100%)' }}/>
+          <GroupAvatar members={[creator, ...selectedMembers]} size={64}/>
           <label className="min-w-0 flex-1 text-xs text-gray-400">ชื่อกลุ่ม
             <input aria-label="ชื่อกลุ่ม" value={groupName} onChange={event => setGroupName(event.target.value)} maxLength={40} className="block w-full border-b border-transparent bg-transparent py-1 text-xl font-bold text-[#1A3048] outline-none focus:border-[#00B8E6]" />
           </label>
