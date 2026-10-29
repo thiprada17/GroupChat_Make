@@ -184,3 +184,4 @@ cython_debug/
 # Keep the backend's requested lib folder visible despite the generic Python lib/ rule
 !/Backend/src/lib/
 !/Backend/src/lib/**
+/node_modules
