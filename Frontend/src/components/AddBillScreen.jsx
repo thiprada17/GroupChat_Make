@@ -3,7 +3,7 @@ import { AlertCircle, ArrowLeft, Camera, LoaderCircle, MoreHorizontal, Plus, Rot
 import { scanReceipt } from '../services/aiService.js';
 
 const makeId = () => crypto.randomUUID();
-const emptyItem = () => ({ id: makeId(), name: '', price: '' });
+const emptyItem = () => ({ id: makeId(), name: '', price: '', addons: [] });
 const cents = amount => Math.round((Number(amount) || 0) * 100);
 
 export default function AddBillScreen({ groupName = 'ค่ากิน', onBack, onConfirmBill, onClose, onConfirm, busy = false }) {
@@ -58,7 +58,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
         });
         return;
       }
-      setItems(extracted.items.map(item => ({ ...item, price: String(item.price) })));
+      setItems(extracted.items.map(item => ({ ...item, price: String(item.price), addons: item.addons || [] })));
       const extractedCharges = extracted.charges.map(charge => ({ ...charge, id: makeId(), amount: Number(charge.amount) }));
       const extractedItemsSubtotal = extracted.items.reduce((sum, item) => sum + cents(item.price), 0);
       const extractedChargesTotal = extractedCharges.reduce((sum, charge) => sum + cents(charge.amount), 0);
@@ -122,10 +122,13 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
         <h2 className="text-base font-bold text-gray-800">รายการ</h2>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5">
-        {items.map(item => <div key={item.id} className="my-2 flex items-center gap-3">
-          <input aria-label="ชื่อรายการ" value={item.name} onChange={event => updateItem(item.id, 'name', event.target.value)} placeholder="" maxLength={80} className="min-w-0 flex-1 border-b border-gray-400 bg-transparent py-0 text-sm leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
-          <input aria-label="ราคา" type="number" min="0" max="1000000" step="0.01" value={item.price} onChange={event => updateItem(item.id, 'price', event.target.value)} placeholder="" className="w-[67px] border-b border-gray-400 bg-transparent py-0 text-right text-sm font-semibold leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
-          <button type="button" aria-label="ลบรายการ" onClick={() => removeItem(item.id)} className="ml-1 text-sm text-gray-400 hover:text-red-500"><X size={16}/></button>
+        {items.map(item => <div key={item.id} className="my-3">
+          <div className="flex items-center gap-3">
+            <input aria-label="ชื่อรายการ" value={item.name} onChange={event => updateItem(item.id, 'name', event.target.value)} placeholder="" maxLength={80} className="min-w-0 flex-1 border-b border-gray-400 bg-transparent py-0 text-sm leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
+            <input aria-label="ราคา" type="number" min="0" max="1000000" step="0.01" value={item.price} onChange={event => updateItem(item.id, 'price', event.target.value)} placeholder="" className="w-[67px] border-b border-gray-400 bg-transparent py-0 text-right text-sm font-semibold leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
+            <button type="button" aria-label="ลบรายการ" onClick={() => removeItem(item.id)} className="ml-1 text-sm text-gray-400 hover:text-red-500"><X size={16}/></button>
+          </div>
+          {item.addons?.length > 0 && <div className="ml-2 mt-1 border-l-2 border-[#D9EEF2] pl-3 text-xs leading-relaxed text-gray-500">{item.addons.map((addon, index) => <p key={`${item.id}-addon-${index}`}>– {addon}</p>)}</div>}
         </div>)}
         <button type="button" onClick={addItem} className="mt-2 inline-flex items-center text-sm font-semibold text-[#00B8E6] underline">+ เพิ่มรายการ</button>
       </div>

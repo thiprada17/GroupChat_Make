@@ -7,7 +7,11 @@ export const billService = {
       const name = String(item.name ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 80);
       const price = Math.round(Number(item.price) * 100) / 100;
       if (!name || !Number.isFinite(price) || price < 0 || price > 1000000) throw new Error('กรุณาตรวจสอบชื่อและราคาของรายการ');
-      return { ...item, name, price };
+      const addons = (Array.isArray(item.addons) ? item.addons : [])
+        .map(addon => String(addon ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 80))
+        .filter(Boolean)
+        .slice(0, 12);
+      return { ...item, name, price, addons };
     });
     const charges = (bill.charges || []).map(charge => {
       const name = String(charge.name ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 60);

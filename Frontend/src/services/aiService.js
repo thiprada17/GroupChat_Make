@@ -26,7 +26,11 @@ export async function scanReceipt(imageDataUrl) {
   }
 
   const items = result.items
-    .map(item => ({ name: String(item?.name ?? '').trim(), price: Number(item?.price) }))
+    .map(item => ({
+      name: String(item?.name ?? '').trim(),
+      price: Number(item?.price),
+      addons: (Array.isArray(item?.addons) ? item.addons : []).map(addon => String(addon ?? '').trim()).filter(Boolean),
+    }))
     .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000)
     .map(item => ({ ...item, id: crypto.randomUUID() }));
 
