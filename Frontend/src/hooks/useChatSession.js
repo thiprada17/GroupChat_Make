@@ -60,6 +60,7 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
   const [status, setStatus] = useState(() => initialSession?.status || 'idle');
   const [items, setItems] = useState(() => initialSession?.items || []);
   const [charges, setCharges] = useState(() => initialSession?.charges || []);
+  const [receiptImageUrl, setReceiptImageUrl] = useState(() => initialSession?.receiptImageUrl || null);
   const [sessionCreatorId, setSessionCreatorId] = useState(initialCreatorId);
   const [title, setTitle] = useState(() => initialSession?.title || 'ค่ากิน');
   const [messages, setMessages] = useState(() => initialSession?.messages || []);
@@ -91,9 +92,9 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
   const shares = useMemo(() => Object.fromEntries(memberSummaries.map(summary => [summary.userId, summary.totalAmount])), [memberSummaries]);
 
   useEffect(() => {
-    try { localStorage.setItem(storageKey, JSON.stringify({ status, items, charges, title, messages, paid, createdById: sessionCreatorId })); }
+    try { localStorage.setItem(storageKey, JSON.stringify({ status, items, charges, receiptImageUrl, title, messages, paid, createdById: sessionCreatorId })); }
     catch { /* Chat stays usable if browser storage is full or unavailable. */ }
-  }, [storageKey, status, items, charges, title, messages, paid, sessionCreatorId]);
+  }, [storageKey, status, items, charges, receiptImageUrl, title, messages, paid, sessionCreatorId]);
 
   useEffect(() => {
     if (status !== 'closed' || !items.length) return;
@@ -114,9 +115,23 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
       const saved = await billService.saveBill(bill);
       setItems(saved.items.map(item => ({ ...item, assignedUserIds: [...item.assignedUserIds] })));
       setCharges(saved.charges || []);
+      setReceiptImageUrl(saved.receiptImageUrl || null);
       setSessionCreatorId(createdById);
       setTitle(saved.title || 'ค่ากิน'); setPaid({}); setStatus('open');
       setMessages([{ id: newId(), type: 'divider', content: 'เปิด Session' }, { id: newId(), type: 'bill', senderId: createdById, billSession: { createdById } }]);
+    } catch (cause) { setError(cause.message); throw cause; }
+    finally { setBusy(false); }
+  }
+
+  async function updateSessionBill(bill) {
+    if (status !== 'open') throw new Error('แก้ไขได้เฉพาะบิลที่ยังเปิดอยู่');
+    setBusy(true); setError('');
+    try {
+      const saved = await billService.saveBill(bill);
+      setItems(saved.items.map(item => ({ ...item, assignedUserIds: [...(item.assignedUserIds || [])] })));
+      setCharges(saved.charges || []);
+      setReceiptImageUrl(saved.receiptImageUrl || null);
+      setTitle(saved.title || 'ค่ากิน');
     } catch (cause) { setError(cause.message); throw cause; }
     finally { setBusy(false); }
   }
@@ -179,5 +194,5 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
     finally { setBusy(false); }
   }
 
-  return { status, items, charges, title, messages, paid, busy, error, setError, total, shares, memberSummaries, createdById: sessionCreatorId, startSession, toggleItem, send, closeSession, pay, transfer };
+  return { status, items, charges, receiptImageUrl, title, messages, paid, busy, error, setError, total, shares, memberSummaries, createdById: sessionCreatorId, startSession, updateSessionBill, toggleItem, send, closeSession, pay, transfer };
 }

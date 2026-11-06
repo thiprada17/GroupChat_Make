@@ -18,14 +18,18 @@ export const INITIAL_MEMBERS = [
   ...CONTACTS,
 ];
 
-const defaultGroups = [{ id: 'chathai', name: 'ChaThai', members: INITIAL_MEMBERS, createdById: 'thong' }];
+const defaultGroups = [{ id: 'chathai', name: 'Group Chat', members: INITIAL_MEMBERS, createdById: 'thong' }];
 
 function loadGroups() {
   try {
     const raw = localStorage.getItem(GROUPS_STORAGE_KEY);
     if (raw !== null) {
       const saved = JSON.parse(raw);
-      if (Array.isArray(saved)) return saved;
+      if (Array.isArray(saved)) return saved.map(group => {
+        const isLegacyDefaultGroup = group.id === 'chathai' && group.name === 'ChaThai';
+        if (isLegacyDefaultGroup || String(group.name || '').trim().toLowerCase() === 'default') return { ...group, name: 'Group Chat' };
+        return group;
+      });
     }
   } catch { /* Use the initial group when storage is empty or invalid. */ }
   return defaultGroups;
