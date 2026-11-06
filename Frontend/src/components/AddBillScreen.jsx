@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { AlertCircle, ArrowLeft, Camera, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Camera, LoaderCircle, MoreHorizontal, Plus, RotateCcw, X } from 'lucide-react';
 import { scanReceipt } from '../services/aiService.js';
 
 const makeId = () => crypto.randomUUID();
@@ -120,7 +120,6 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     <section className="flex min-h-0 flex-1 flex-col overflow-hidden px-[29px] pb-3">
       <div className="flex h-[43px] shrink-0 items-center justify-between border-b border-gray-200">
         <h2 className="text-base font-bold text-gray-800">รายการ</h2>
-        <button type="button" aria-label="Edit items" className="grid h-8 w-8 place-items-center rounded-full bg-[#00B8E6] text-white shadow-sm"><Pencil size={15}/></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5">
         {items.map(item => <div key={item.id} className="my-2 flex items-center gap-3">
