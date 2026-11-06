@@ -8,6 +8,43 @@ const itemNetAmount = item => {
   const cents = Math.round(Number(item.price) * 100) + (item.adjustments || []).reduce((sum, adjustment) => sum + Math.round(Number(adjustment.amount) * 100), 0);
   return cents / 100;
 };
+const roundMoney = amount => Math.round((Number(amount) + Number.EPSILON) * 100) / 100;
+function allocatedCents(totalCents, userIds, userId) {
+  const index = userIds.indexOf(userId);
+  if (index < 0 || !userIds.length) return 0;
+  const base = Math.trunc(totalCents / userIds.length);
+  const remainder = totalCents - base * userIds.length;
+  return base + (index < Math.abs(remainder) ? Math.sign(remainder) : 0);
+}
+function buildCollectionDetails(userId, totalAmount, items, charges, assignedSubtotal) {
+  const selectedItems = items.filter(item => (item.assignedUserIds || []).includes(userId));
+  const itemDetails = selectedItems.map(item => {
+    const userIds = item.assignedUserIds || [];
+    const grossCents = allocatedCents(Math.round(Number(item.price) * 100), userIds, userId);
+    const adjustments = (item.adjustments || []).map(adjustment => ({
+      name: adjustment.name,
+      amount: allocatedCents(Math.round(Number(adjustment.amount) * 100), userIds, userId) / 100,
+    }));
+    const netCents = allocatedCents(Math.round(itemNetAmount(item) * 100), userIds, userId);
+    const adjustmentRemainderCents = netCents - grossCents - adjustments.reduce((sum, adjustment) => sum + Math.round(adjustment.amount * 100), 0);
+    if (adjustmentRemainderCents) adjustments.push({ name: 'การปัดเศษส่วนแบ่งรายการ', amount: adjustmentRemainderCents / 100 });
+    return {
+      name: item.name,
+      addons: item.addons || [],
+      grossAmount: grossCents / 100,
+      adjustments,
+      amount: netCents / 100,
+    };
+  });
+  const itemsAmount = roundMoney(itemDetails.reduce((sum, item) => sum + item.amount, 0));
+  const allocatedCharges = charges.map(charge => ({
+    name: charge.name,
+    amount: roundMoney(Number(charge.amount) * (assignedSubtotal > 0 ? itemsAmount / assignedSubtotal : 0)),
+  }));
+  const detailsRemainder = roundMoney(totalAmount - itemsAmount - allocatedCharges.reduce((sum, charge) => sum + charge.amount, 0));
+  if (detailsRemainder) allocatedCharges.push({ name: 'การปัดเศษส่วนแบ่ง', amount: detailsRemainder });
+  return { items: itemDetails, itemsAmount, charges: allocatedCharges, total: totalAmount };
+}
 export default function useChatSession(members, creatorId = 'thong', groupId = 'default') {
   const storageKey = `groupchat.history.v1.${groupId}`;
   const [initialSession] = useState(() => {
@@ -58,6 +95,19 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
     catch { /* Chat stays usable if browser storage is full or unavailable. */ }
   }, [storageKey, status, items, charges, title, messages, paid, sessionCreatorId]);
 
+  useEffect(() => {
+    if (status !== 'closed' || !items.length) return;
+    setMessages(current => {
+      let changed = false;
+      const updated = current.map(message => {
+        if (message.type !== 'collection' || message.details) return message;
+        changed = true;
+        return { ...message, details: buildCollectionDetails(message.recipientId, message.amount, items, charges, assignedSubtotal) };
+      });
+      return changed ? updated : current;
+    });
+  }, [status, items, charges, assignedSubtotal]);
+
   async function startSession(bill, createdById = creatorId) {
     setBusy(true); setError('');
     try {
@@ -91,7 +141,14 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
     try {
       await billService.closeSession({ items, shares, charges });
       setStatus('closed');
-      const collectionMessages = memberSummaries.filter(summary => !summary.isPaid && summary.totalAmount > 0).map(summary => ({ id: newId(), type: 'collection', senderId: sessionCreatorId, recipientId: summary.userId, amount: summary.totalAmount }));
+      const collectionMessages = memberSummaries.filter(summary => !summary.isPaid && summary.totalAmount > 0).map(summary => ({
+          id: newId(),
+          type: 'collection',
+          senderId: sessionCreatorId,
+          recipientId: summary.userId,
+          amount: summary.totalAmount,
+          details: buildCollectionDetails(summary.userId, summary.totalAmount, items, charges, assignedSubtotal),
+      }));
       setMessages(current => [...current.filter(message => message.type !== 'bill'),
         { id: newId(), type: 'status', content: 'กำลังสรุปบิล...' },
         { id: newId(), type: 'divider', content: 'ปิด Session' },

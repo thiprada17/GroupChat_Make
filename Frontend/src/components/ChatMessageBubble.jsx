@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CheckCheck, ChevronDown, LoaderCircle, Wallet } from 'lucide-react';
 
 function Profile({ user, own = false }) {
@@ -9,6 +9,7 @@ function Profile({ user, own = false }) {
 }
 
 export default function ChatMessageBubble({ message, people = [], currentUser = 'thong', onPay, busy = false }) {
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const person = people.find(user => user.id === message.senderId) || people[0];
   const recipient = people.find(user => user.id === message.recipientId);
   const own = message.senderId === currentUser;
@@ -23,9 +24,28 @@ export default function ChatMessageBubble({ message, people = [], currentUser = 
   </div>;
 
   if (message.type === 'collection') return <div className={'my-2 flex w-full max-w-[310px] flex-col '+alignment}>
-    <Profile user={person} own={own}/><div className="flex min-h-[82px] w-full items-center gap-3 rounded-[20px] bg-[#F5F5F5] px-3 py-3 text-[#34414C]">
-      <div className="min-w-0 flex-1"><b className="block text-sm">เรียกเก็บเงิน</b><span className="text-sm">{message.recipientId === currentUser ? 'คุณ' : recipient?.name}</span></div>
-      <div className="flex min-w-[105px] flex-col items-end gap-2"><strong className={'text-lg '+(message.isPaid ? 'text-[#69C9C8]' : 'text-red-500')}>{message.amount.toFixed(2)}</strong>{message.recipientId === currentUser ? <button type="button" onClick={() => onPay?.(message.recipientId)} disabled={busy || message.isPaid} className="flex h-7 min-w-[125px] items-center justify-center gap-1 rounded-lg bg-[#00B8E6] px-3 text-sm text-white disabled:bg-[#69C9C8]">{busy ? <LoaderCircle size={14} className="animate-spin"/> : <Wallet size={14}/>} {message.isPaid ? 'จ่ายแล้ว' : 'จ่ายทันที'}</button> : <ChevronDown size={18} className="mr-1"/>}</div>
+    <Profile user={person} own={own}/><div className="w-full rounded-[20px] bg-[#F5F5F5] px-3 py-3 text-[#34414C]">
+      <div className="flex items-center gap-3">
+        <button type="button" aria-expanded={detailsOpen} onClick={() => setDetailsOpen(open => !open)} className="flex min-h-[54px] min-w-0 flex-1 items-center justify-between gap-3 text-left">
+          <span className="min-w-0"><b className="block text-sm">เรียกเก็บเงิน</b><span className="text-sm">{message.recipientId === currentUser ? 'คุณ' : recipient?.name}</span></span>
+          <span className="flex shrink-0 items-center gap-2"><strong className={'text-lg '+(message.isPaid ? 'text-[#69C9C8]' : 'text-red-500')}>{message.amount.toFixed(2)}</strong><ChevronDown size={18} className={'transition-transform '+(detailsOpen ? 'rotate-180' : '')}/></span>
+        </button>
+        {message.recipientId === currentUser && <button type="button" onClick={() => onPay?.(message.recipientId)} disabled={busy || message.isPaid} className="flex h-7 min-w-[125px] shrink-0 items-center justify-center gap-1 rounded-lg bg-[#00B8E6] px-3 text-sm text-white disabled:bg-[#69C9C8]">{busy ? <LoaderCircle size={14} className="animate-spin"/> : <Wallet size={14}/>} {message.isPaid ? 'จ่ายแล้ว' : 'จ่ายทันที'}</button>}
+      </div>
+      {detailsOpen && <div className="mt-2 border-t border-gray-200 pt-2 text-xs">
+        {message.details ? <>
+          <b className="mb-1 block text-[#34414C]">รายการที่เลือก</b>
+          {message.details.items.map((item, index) => <div key={`${item.name}-${index}`} className="mb-2 border-b border-gray-200/80 pb-2 last:border-0">
+            <div className="flex justify-between gap-2"><span className="font-medium">{item.name}</span><span>{item.grossAmount.toFixed(2)}</span></div>
+            {item.addons?.map((addon, addonIndex) => <div key={`${index}-addon-${addonIndex}`} className="mt-0.5 pl-2 text-gray-500">– {addon}</div>)}
+            {item.adjustments?.map((adjustment, adjustmentIndex) => <div key={`${index}-adjustment-${adjustmentIndex}`} className="mt-0.5 flex justify-between gap-2 pl-2 text-rose-600"><span>{adjustment.name}</span><span>{adjustment.amount < 0 ? '−' : '+'}{Math.abs(adjustment.amount).toFixed(2)}</span></div>)}
+            {(item.adjustments?.length > 0) && <div className="mt-1 flex justify-between border-t border-gray-100 pt-1 font-semibold"><span>สุทธิรายการ</span><span>{item.amount.toFixed(2)}</span></div>}
+          </div>)}
+          <div className="flex justify-between border-t border-gray-200 py-1 font-medium"><span>รวมรายการที่เลือก</span><span>{message.details.itemsAmount.toFixed(2)}</span></div>
+          {message.details.charges.map((charge, index) => <div key={`${charge.name}-${index}`} className="flex justify-between gap-2 py-1 text-gray-600"><span>{charge.name}</span><span className={charge.amount < 0 ? 'text-rose-600' : ''}>{charge.amount < 0 ? '−' : '+'}{Math.abs(charge.amount).toFixed(2)}</span></div>)}
+          <div className="mt-1 flex justify-between border-t border-gray-200 pt-2 font-bold"><span>ยอดเรียกเก็บ</span><span>{message.details.total.toFixed(2)}</span></div>
+        </> : <p className="py-2 text-gray-500">ไม่มีรายละเอียดรายการสำหรับบิลนี้</p>}
+      </div>}
     </div>
   </div>;
 
