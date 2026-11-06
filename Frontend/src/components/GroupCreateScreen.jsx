@@ -20,7 +20,7 @@ function EditButton({ onClick, label }) {
 export default function GroupCreateScreen({ contacts = fallbackContacts, onBack, onGroupCreated, onCreate, initialGroup }) {
   const [step, setStep] = useState(1);
   const [selectedMemberIds, setSelectedMemberIds] = useState(() => initialGroup?.members?.filter(person => person.id !== creator.id).map(person => person.id) || ['nadia', 'jinny']);
-  const [groupName, setGroupName] = useState(initialGroup?.name || 'ค่ากิน');
+  const [groupName, setGroupName] = useState(initialGroup?.name || 'Group Chat');
   const [query, setQuery] = useState('');
   const visibleContacts = useMemo(() => contacts.filter(user => `${user.name} ${user.phone || ''}`.toLowerCase().includes(query.trim().toLowerCase())), [contacts, query]);
   const selectedMembers = contacts.filter(user => selectedMemberIds.includes(user.id));
@@ -30,7 +30,7 @@ export default function GroupCreateScreen({ contacts = fallbackContacts, onBack,
   }
 
   function createGroup() {
-    const name = groupName.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 40) || 'ค่ากิน';
+    const name = groupName.replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 40) || 'Group Chat';
     const members = [creator, ...selectedMembers];
     const callback = onGroupCreated || onCreate;
     callback?.({ id: initialGroup?.id || crypto.randomUUID(), name, members, createdById: initialGroup?.createdById || creator.id });
