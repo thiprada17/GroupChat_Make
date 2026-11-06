@@ -12,7 +12,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
   const [charges, setCharges] = useState([]);
   const [receiptSummary, setReceiptSummary] = useState(null);
   const [scanning, setScanning] = useState(false);
-  const [showNotBillModal, setShowNotBillModal] = useState(false);
+  const [scanModal, setScanModal] = useState(null);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
   const title = groupName || 'ค่ากิน';
@@ -52,7 +52,10 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     try {
       const extracted = await scanReceipt(imageUrl);
       if (!extracted.isReceipt) {
-        setShowNotBillModal(true);
+        setScanModal({
+          title: 'ไม่สามารถอ่านใบเสร็จได้',
+          message: 'รูปที่อัปโหลดอาจไม่ใช่ใบเสร็จ หรือรายละเอียดไม่ชัดเจน กรุณาอัปโหลดภาพใบเสร็จที่เห็นรายการและยอดชำระครบถ้วนอีกครั้ง',
+        });
         return;
       }
       setItems(extracted.items.map(item => ({ ...item, price: String(item.price) })));
@@ -72,7 +75,12 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       }
       setCharges(extractedCharges);
       setReceiptSummary({ subtotal: extracted.subtotal, receiptTotal: extracted.receiptTotal });
-    } catch (cause) { setError(cause.message || 'อ่านใบเสร็จไม่สำเร็จ'); }
+    } catch {
+      setScanModal({
+        title: 'เกิดข้อผิดพลาด',
+        message: 'ระบบเกิดข้อผิดพลาด กรุณาลองอัปโหลดรูปใบเสร็จอีกครั้ง',
+      });
+    }
     finally { setScanning(false); }
   }
 
@@ -137,7 +145,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       <button type="button" disabled={busy || scanning} onClick={confirm} className="h-[34px] w-[124px] rounded-full bg-[#00B8E6] text-lg font-bold text-white transition-colors hover:bg-[#00A3CC] disabled:opacity-60">ยืนยัน</button>
     </footer>
 
-    {showNotBillModal && <div className="fixed inset-0 z-50 mx-auto grid w-full max-w-md place-items-center bg-slate-900/50 p-5"><section role="alertdialog" aria-modal="true" aria-labelledby="not-bill-title" className="w-full rounded-2xl bg-white p-5 text-center shadow-xl"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-50 text-amber-500"><AlertCircle size={25}/></span><h2 id="not-bill-title" className="mt-3 text-lg font-bold text-[#1A3048]">ไม่สามารถอ่านใบเสร็จได้</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">รูปที่อัปโหลดอาจไม่ใช่ใบเสร็จ หรือรายละเอียดไม่ชัดเจน กรุณาอัปโหลดภาพใบเสร็จที่เห็นรายการและยอดชำระครบถ้วนอีกครั้ง</p><div className="mt-5 flex gap-2"><button type="button" onClick={() => setShowNotBillModal(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-slate-600">ปิด</button><button type="button" onClick={() => { setShowNotBillModal(false); inputRef.current?.click(); }} className="flex-1 rounded-xl bg-[#00B8E6] py-2.5 text-sm font-bold text-white">อัปโหลดรูปใหม่</button></div></section></div>}
+    {scanModal && <div className="fixed inset-0 z-50 mx-auto grid w-full max-w-md place-items-center bg-slate-900/50 p-5"><section role="alertdialog" aria-modal="true" aria-labelledby="receipt-error-title" className="w-full rounded-2xl bg-white p-5 text-center shadow-xl"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-50 text-amber-500"><AlertCircle size={25}/></span><h2 id="receipt-error-title" className="mt-3 text-lg font-bold text-[#1A3048]">{scanModal.title}</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">{scanModal.message}</p><div className="mt-5 flex gap-2"><button type="button" onClick={() => setScanModal(null)} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-slate-600">ปิด</button><button type="button" onClick={() => { setScanModal(null); inputRef.current?.click(); }} className="flex-1 rounded-xl bg-[#00B8E6] py-2.5 text-sm font-bold text-white">อัปโหลดรูปใหม่</button></div></section></div>}
   </main>;
 }
 

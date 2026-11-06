@@ -103,12 +103,12 @@ export async function analyzeReceipt(request, response) {
     const status = Number(error?.status);
     console.error('Gemini receipt analysis failed; provider status:', status || 'unknown');
     if (status === 429 || status === 503) {
-      return response.status(503).json({ error: { message: 'Gemini มีผู้ใช้งานจำนวนมากชั่วคราว กรุณาลองอีกครั้ง' } });
+      return response.status(503).json({ error: { message: 'ระบบเกิดข้อผิดพลาด กรุณาลองอัปโหลดรูปใบเสร็จอีกครั้ง' } });
     }
     if (status === 401 || status === 403) {
-      return response.status(503).json({ error: { message: 'กรุณาตรวจสอบ GEMINI_API_KEY ใน Backend/.env' } });
+      return response.status(503).json({ error: { message: 'ขณะนี้ไม่สามารถอ่านใบเสร็จได้ กรุณาลองใหม่อีกครั้งภายหลัง' } });
     }
-    return response.status(502).json({ error: { message: 'Gemini อ่านใบเสร็จไม่สำเร็จ กรุณาลองอีกครั้ง' } });
+    return response.status(502).json({ error: { message: 'ระบบเกิดข้อผิดพลาด กรุณาลองอัปโหลดรูปใบเสร็จอีกครั้ง' } });
   }
 }
 

@@ -19,7 +19,7 @@ export async function scanReceipt(imageDataUrl) {
   catch { throw new Error('ได้รับผลการอ่านใบเสร็จไม่ถูกต้อง'); }
 
   if (!response.ok) {
-    throw new Error(result?.error?.message || 'Gemini อ่านใบเสร็จไม่สำเร็จ กรุณาลองอีกครั้ง');
+    throw new Error(result?.error?.message || 'ระบบเกิดข้อผิดพลาด กรุณาลองอัปโหลดรูปใบเสร็จอีกครั้ง');
   }
   if (!Array.isArray(result?.items)) {
     throw new Error('ไม่พบรายการสินค้าในผลการอ่านใบเสร็จ');
