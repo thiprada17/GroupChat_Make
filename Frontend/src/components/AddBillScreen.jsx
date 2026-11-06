@@ -4,18 +4,32 @@ import { scanReceipt } from '../services/aiService.js';
 
 const makeId = () => crypto.randomUUID();
 const emptyItem = () => ({ id: makeId(), name: '', price: '' });
+const cents = amount => Math.round((Number(amount) || 0) * 100);
 
 export default function AddBillScreen({ groupName = 'ค่ากิน', onBack, onConfirmBill, onClose, onConfirm, busy = false }) {
   const [receiptImage, setReceiptImage] = useState(null);
   const [items, setItems] = useState([emptyItem()]);
+  const [charges, setCharges] = useState([]);
+  const [receiptSummary, setReceiptSummary] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
   const title = groupName || 'ค่ากิน';
-  const totalAmount = useMemo(() => items.reduce((sum, item) => sum + Math.round((Number(item.price) || 0) * 100), 0) / 100, [items]);
+  const totalAmount = useMemo(() => {
+    const itemTotal = items.reduce((sum, item) => sum + cents(item.price), 0);
+    const chargeTotal = charges.reduce((sum, charge) => sum + cents(charge.amount), 0);
+    return (itemTotal + chargeTotal) / 100;
+  }, [items, charges]);
+  const itemsSubtotal = items.reduce((sum, item) => sum + cents(item.price), 0) / 100;
+  const subtotalMismatch = receiptSummary?.subtotal > 0 && Math.abs(cents(receiptSummary.subtotal) - cents(itemsSubtotal)) > 1;
+  const totalMismatch = receiptSummary?.receiptTotal > 0 && Math.abs(cents(receiptSummary.receiptTotal) - cents(totalAmount)) > 1;
 
   function updateItem(id, field, value) {
     setItems(current => current.map(item => item.id === id ? { ...item, [field]: value } : item));
+  }
+
+  function updateCharge(id, amount) {
+    setCharges(current => current.map(charge => charge.id === id ? { ...charge, amount } : charge));
   }
 
   async function loadImage(file) {
@@ -36,7 +50,23 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     setScanning(true);
     try {
       const extracted = await scanReceipt(imageUrl);
-      setItems(extracted.map(item => ({ ...item, price: String(item.price) })));
+      setItems(extracted.items.map(item => ({ ...item, price: String(item.price) })));
+      const extractedCharges = extracted.charges.map(charge => ({ ...charge, id: makeId(), amount: Number(charge.amount) }));
+      const extractedItemsSubtotal = extracted.items.reduce((sum, item) => sum + cents(item.price), 0);
+      const extractedChargesTotal = extractedCharges.reduce((sum, charge) => sum + cents(charge.amount), 0);
+      const reportedSubtotal = cents(extracted.subtotal);
+      const reportedTotal = cents(extracted.receiptTotal);
+      const subtotalMatches = reportedSubtotal > 0 && Math.abs(reportedSubtotal - extractedItemsSubtotal) <= 1;
+      if (subtotalMatches && reportedTotal > 0) {
+        const remaining = reportedTotal - extractedItemsSubtotal - extractedChargesTotal;
+        if (remaining !== 0) extractedCharges.push({
+          id: makeId(),
+          name: remaining < 0 ? 'ปัดเศษ/ปรับยอด' : 'ค่าธรรมเนียมอื่นจากใบเสร็จ',
+          amount: remaining / 100,
+        });
+      }
+      setCharges(extractedCharges);
+      setReceiptSummary({ subtotal: extracted.subtotal, receiptTotal: extracted.receiptTotal });
     } catch (cause) { setError(cause.message || 'อ่านใบเสร็จไม่สำเร็จ'); }
     finally { setScanning(false); }
   }
@@ -51,13 +81,13 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       setError('กรุณากรอกชื่อและราคาของทุกรายการให้ถูกต้อง');
       return;
     }
-    const result = { title, items: validItems.map(item => ({ ...item, assignedUserIds: [] })), totalAmount, receiptImageUrl: receiptImage };
+    const result = { title, items: validItems.map(item => ({ ...item, assignedUserIds: [] })), charges, totalAmount, receiptImageUrl: receiptImage };
     const callback = onConfirmBill || onConfirm;
     try { await callback?.(result); }
     catch (cause) { setError(cause.message || 'บันทึกบิลไม่สำเร็จ'); }
   }
 
-  return <main className="fixed inset-0 z-30 mx-auto flex min-h-[100dvh] w-full max-w-md flex-col overflow-y-auto bg-white text-[#1A3048] shadow-2xl">
+  return <main className="fixed inset-0 z-30 mx-auto flex h-[100dvh] w-full max-w-md flex-col overflow-hidden bg-white text-[#1A3048] shadow-2xl">
     <header className="relative z-10 flex h-[100px] shrink-0 items-center justify-between bg-[#8AE3FF] px-3">
       <button type="button" aria-label="Back" onClick={onBack || onClose} className="grid h-10 w-10 place-items-center text-[#00B8E6] hover:opacity-80"><ArrowLeft size={25}/></button>
       <h1 className="flex-1 pr-6 text-center text-xl font-bold">{title}</h1>
@@ -74,12 +104,12 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       {scanning && <span className="absolute left-1/2 top-[267px] z-10 -translate-x-1/2 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#56838C]"><LoaderCircle size={12} className="mr-1 inline animate-spin"/>กำลังอ่านใบเสร็จ</span>}
     </section>
 
-    <section className="flex min-h-[280px] flex-1 flex-col px-[29px] pb-3">
+    <section className="flex min-h-0 flex-1 flex-col overflow-hidden px-[29px] pb-3">
       <div className="flex h-[43px] shrink-0 items-center justify-between border-b border-gray-200">
         <h2 className="text-base font-bold text-gray-800">รายการ</h2>
         <button type="button" aria-label="Edit items" className="grid h-8 w-8 place-items-center rounded-full bg-[#00B8E6] text-white shadow-sm"><Pencil size={15}/></button>
       </div>
-      <div className="pt-5">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pt-5">
         {items.map(item => <div key={item.id} className="my-2 flex items-center gap-3">
           <input aria-label="ชื่อรายการ" value={item.name} onChange={event => updateItem(item.id, 'name', event.target.value)} placeholder="" maxLength={80} className="min-w-0 flex-1 border-b border-gray-400 bg-transparent py-0 text-sm leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
           <input aria-label="ราคา" type="number" min="0" max="1000000" step="0.01" value={item.price} onChange={event => updateItem(item.id, 'price', event.target.value)} placeholder="" className="w-[67px] border-b border-gray-400 bg-transparent py-0 text-right text-sm font-semibold leading-4 text-gray-800 outline-none transition-colors focus:border-[#00B8E6] placeholder:text-gray-300"/>
@@ -87,9 +117,14 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
         </div>)}
         <button type="button" onClick={addItem} className="mt-2 inline-flex items-center text-sm font-semibold text-[#00B8E6] underline">+ เพิ่มรายการ</button>
       </div>
-      {error && <p role="alert" className="mt-2 text-xs text-red-500">{error}</p>}
-      <div className="mt-auto flex items-center justify-between border-y border-gray-200 px-0 py-4">
+      {error && <p role="alert" className="shrink-0 py-2 text-xs text-red-500">{error}</p>}
+      <div className="shrink-0 border-y border-gray-200 py-3">
+        {charges.map(charge => <label key={charge.id || `${charge.name}-${charge.amount}`} className="flex items-center justify-between gap-3 py-1 text-sm text-gray-600"><span className="min-w-0 flex-1 truncate">{charge.name}</span><input aria-label={`ยอด ${charge.name}`} type="number" step="0.01" value={charge.amount} onChange={event => updateCharge(charge.id, event.target.value)} className="w-24 border-b border-gray-300 bg-transparent text-right font-semibold text-gray-800 outline-none focus:border-[#00B8E6]"/></label>)}
+        {subtotalMismatch && <p role="status" className="py-2 text-xs leading-relaxed text-amber-700">AI อ่าน subtotal ได้ {Number(receiptSummary.subtotal).toFixed(2)} แต่รวมรายการได้ {itemsSubtotal.toFixed(2)} กรุณาตรวจชื่อหรือราคาของรายการที่อ่านได้</p>}
+        {!subtotalMismatch && totalMismatch && <p role="status" className="py-2 text-xs leading-relaxed text-amber-700">ยอดรวมยังไม่ตรงกับใบเสร็จ กรุณาตรวจค่าธรรมเนียมที่อ่านได้</p>}
+        <div className="flex items-center justify-between pt-1">
         <span className="text-base font-bold text-gray-800">ยอดรวม</span><strong className="text-xl font-bold text-gray-900">{totalAmount.toFixed(2)}</strong>
+        </div>
       </div>
     </section>
 

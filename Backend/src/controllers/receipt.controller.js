@@ -15,8 +15,22 @@ const receiptSchema = {
         additionalProperties: false,
       },
     },
+    charges: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          amount: { type: 'number' },
+        },
+        required: ['name', 'amount'],
+        additionalProperties: false,
+      },
+    },
+    subtotal: { type: 'number' },
+    receiptTotal: { type: 'number' },
   },
-  required: ['items'],
+  required: ['items', 'charges', 'subtotal', 'receiptTotal'],
   additionalProperties: false,
 };
 
@@ -40,7 +54,7 @@ export async function analyzeReceipt(request, response) {
       role: 'user',
       parts: [
         {
-          text: 'อ่านใบเสร็จจากรูปนี้ แล้วดึงเฉพาะรายการสินค้าหรืออาหารแต่ละบรรทัดพร้อมราคาของรายการนั้น คงชื่อสินค้าเป็นภาษาเดิม ไม่นำยอดรวม ภาษี ค่าบริการ ส่วนลด หรือยอดชำระมาเป็นรายการ อย่าเดาข้อความหรือราคาที่อ่านไม่ชัด ให้ละรายการนั้นไป หากไม่พบรายการที่อ่านได้ ให้ส่ง items เป็น array ว่าง',
+          text: 'อ่านใบเสร็จจากรูปนี้โดยตรวจทั้งรายการและส่วนสรุปท้ายใบเสร็จ ห้ามหยุดเมื่อพบ subtotal. items คือสินค้า/อาหารแต่ละบรรทัด โดย price เป็นราคารวมของบรรทัดนั้น (รวมจำนวนชิ้นของบรรทัดแล้ว) ไม่ใช่ราคาต่อชิ้น. charges คือรายการปรับยอดทุกชนิดที่แสดงแยกจากสินค้า เช่น service charge, VAT/TAX, rounding/round off, discount, delivery, surcharge; เก็บชื่อเดิมและจำนวนเงินจริงตามใบเสร็จ ส่วนลดหรือ rounding ที่ลดราคาให้ใช้ amount ติดลบ. ถ้ามีเปอร์เซ็นต์ ให้คำนวณจำนวนเงินจากฐานที่ระบุในใบเสร็จ; ถ้ามีจำนวนเงินจริงให้ใช้จำนวนนั้น. subtotal คือยอดก่อน charges ตามที่พิมพ์ไว้; receiptTotal คือยอดสุทธิที่ต้องจ่าย. ห้ามนำ subtotal, before tax, ยอดรวม หรือยอดชำระมาเป็นสินค้า และห้ามนับค่าเดียวกันซ้ำ. หาก subtotal หรือ receiptTotal อ่านไม่ได้ให้ใส่ 0; หากไม่พบ charges ให้ส่ง array ว่าง. คงภาษาเดิมและอย่าเดารายการอาหารหรือราคา',
         },
         { inlineData: { mimeType: mimeType.toLowerCase(), data: imageData } },
       ],
@@ -71,8 +85,18 @@ export async function analyzeReceipt(request, response) {
     const items = (Array.isArray(parsed.items) ? parsed.items : [])
       .map(item => ({ name: String(item?.name ?? '').trim(), price: Number(item?.price) }))
       .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000);
+    const charges = (Array.isArray(parsed.charges) ? parsed.charges : [])
+      .map(charge => ({ name: String(charge?.name ?? '').trim(), amount: Number(charge?.amount) }))
+      .filter(charge => charge.name && Number.isFinite(charge.amount) && charge.amount >= -1000000 && charge.amount <= 1000000);
+    const subtotal = Number(parsed.subtotal);
+    const receiptTotal = Number(parsed.receiptTotal);
 
-    return response.json({ items });
+    return response.json({
+      items,
+      charges,
+      subtotal: Number.isFinite(subtotal) && subtotal > 0 && subtotal <= 1000000 ? subtotal : 0,
+      receiptTotal: Number.isFinite(receiptTotal) && receiptTotal > 0 && receiptTotal <= 1000000 ? receiptTotal : 0,
+    });
   } catch (error) {
     const status = Number(error?.status);
     console.error('Gemini receipt analysis failed; provider status:', status || 'unknown');

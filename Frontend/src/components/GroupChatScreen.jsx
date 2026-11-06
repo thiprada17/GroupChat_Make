@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Check, ChevronDown, MoreHorizontal, ReceiptText, Send, Wallet, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, ChevronDown, MoreHorizontal, ReceiptText, Send, Wallet, X } from 'lucide-react';
 import useChatSession from '../hooks/useChatSession.js';
 import AddBillScreen from './AddBillScreen.jsx';
 import BillSessionCard from './BillSessionCard.jsx';
@@ -26,6 +26,7 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
   const [showMembers, setShowMembers] = useState(false);
   const [message, setMessage] = useState('');
   const [showTransfer, setShowTransfer] = useState(false);
+  const [showUnassignedWarning, setShowUnassignedWarning] = useState(false);
   const [transferAmount, setTransferAmount] = useState('');
   const [recipientId, setRecipientId] = useState(group.members.find(person => person.id !== 'thong')?.id || '');
 
@@ -40,6 +41,15 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
     if (!Number.isFinite(amount) || amount <= 0) return;
     const result = await chat.transfer(amount, recipientId, currentUser);
     if (result) { setTransferAmount(''); setShowTransfer(false); }
+  }
+
+  async function requestCloseSession() {
+    const unassignedItems = chat.items.filter(item => !(item.assignedUserIds || []).length);
+    if (unassignedItems.length) {
+      setShowUnassignedWarning(true);
+      return;
+    }
+    await chat.closeSession();
   }
 
   if (view === 'settings') return <GroupSettingsScreen group={group} onBack={onCloseSettings} onEditGroupName={onEditGroupName} onManageMembers={onManageMembers} onDeleteGroup={onDeleteGroup}/>;
@@ -57,7 +67,7 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
     <section className="relative flex-1 overflow-y-auto bg-gradient-to-b from-[#8AE3FF] via-[#D6F4EC] to-[#EFF7F2] px-3 pb-5 pt-3 sm:px-8" aria-label="Chat messages">
       {chat.status === 'idle' && chat.messages.length === 0 && <div className="flex h-full items-center justify-center"><p className="rounded-xl bg-white/70 px-4 py-2 text-sm text-slate-500">เริ่มพูดคุย หรือเพิ่มบิลเพื่อหารค่าอาหาร</p></div>}
       {chat.messages.map((item, index) => <React.Fragment key={`${item.id}-${index}`}>
-        {item.type === 'bill' ? <div className={'my-2 flex w-full max-w-[350px] flex-col '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'ml-auto items-end' : 'mr-auto items-start')}><div className={'mb-2 flex items-center gap-2 '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'flex-row-reverse' : '')}><Avatar user={group.members.find(person => person.id === item.senderId) || group.members[0]}/><small className="text-[10px] text-[#708A8E]">{group.members.find(person => person.id === item.senderId)?.name || 'thong'}</small></div><BillSessionCard title={chat.title} creatorId={creatorId} items={chat.items} members={group.members} memberSummaries={chat.memberSummaries} status={chat.status} shares={chat.shares} total={chat.total} currentUser={currentUser} paid={chat.paid} busy={chat.busy} onToggle={chat.toggleItem} onClose={chat.closeSession} onEdit={() => setShowBill(true)}/></div>
+        {item.type === 'bill' ? <div className={'my-2 flex w-full max-w-[350px] flex-col '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'ml-auto items-end' : 'mr-auto items-start')}><div className={'mb-2 flex items-center gap-2 '+(item.senderId === currentUser || item.billSession?.createdById === currentUser ? 'flex-row-reverse' : '')}><Avatar user={group.members.find(person => person.id === item.senderId) || group.members[0]}/><small className="text-[10px] text-[#708A8E]">{group.members.find(person => person.id === item.senderId)?.name || 'thong'}</small></div><BillSessionCard title={chat.title} creatorId={chat.createdById} items={chat.items} charges={chat.charges} members={group.members} memberSummaries={chat.memberSummaries} status={chat.status} shares={chat.shares} total={chat.total} currentUser={currentUser} paid={chat.paid} busy={chat.busy} onToggle={chat.toggleItem} onClose={requestCloseSession} onEdit={() => setShowBill(true)}/></div>
           : <ChatMessageBubble message={item} people={group.members} currentUser={currentUser} onPay={chat.pay} busy={chat.busy}/>}
       </React.Fragment>)}
       {chat.error && <div role="alert" className="my-3 flex items-center justify-between rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">{chat.error}<button type="button" onClick={() => chat.setError('')}><X size={15}/></button></div>}
@@ -66,7 +76,9 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
     {chat.status === 'open' ? <footer className="relative z-10 flex h-[70px] shrink-0 items-center bg-[#8AE3FF] px-5"><label className="flex h-[39px] w-full items-center rounded-full border border-gray-200 bg-white px-4"><input value={message} onChange={event => setMessage(event.target.value)} onKeyDown={event => event.key === 'Enter' && sendMessage()} className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400" placeholder="พิมพ์ข้อความ"/><button type="button" aria-label="Send" onClick={sendMessage} disabled={!message.trim()} className="grid h-7 w-7 place-items-center text-[#00B8E6] disabled:text-gray-300"><Send size={16}/></button></label></footer>
       : <ActionBar onTransfer={() => setShowTransfer(true)} onAddBill={() => setShowBill(true)}/>}
 
-    {showBill && <AddBillScreen groupName={group.name} busy={chat.busy} onBack={() => setShowBill(false)} onConfirmBill={async bill => { await chat.startSession(bill); setShowBill(false); }} />}
+    {showBill && <AddBillScreen groupName={group.name} busy={chat.busy} onBack={() => setShowBill(false)} onConfirmBill={async bill => { await chat.startSession(bill, currentUser); setShowBill(false); }} />}
+
+    {showUnassignedWarning && <div className="fixed inset-0 z-50 mx-auto grid w-full max-w-md place-items-center bg-slate-900/50 p-5" role="presentation"><section role="alertdialog" aria-modal="true" aria-labelledby="unassigned-title" className="w-full rounded-2xl bg-white p-5 shadow-xl"><div className="flex items-start gap-3"><AlertCircle className="mt-0.5 shrink-0 text-amber-500" size={22}/><div><h2 id="unassigned-title" className="font-bold text-[#1A3048]">ยังปิด Session ไม่ได้</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">แต่ละรายการต้องมีสมาชิกเลือกอย่างน้อย 1 คน ไม่จำเป็นต้องเลือกทุกคน กรุณากลับไปเลือกให้ครบก่อนปิด Session</p></div></div><button type="button" onClick={() => setShowUnassignedWarning(false)} className="mt-5 w-full rounded-xl bg-[#00B8E6] py-2.5 text-sm font-bold text-white">กลับไปเลือกรายการ</button></section></div>}
 
     {showTransfer && <div className="fixed inset-0 z-40 mx-auto grid w-full max-w-md items-end bg-slate-900/50 backdrop-blur-sm sm:place-items-center sm:p-5"><form onSubmit={sendTransfer} className="w-full rounded-t-3xl bg-white p-5 sm:rounded-3xl"><div className="mb-4 flex items-center justify-between"><h2 className="font-bold">โอนเงิน</h2><button type="button" onClick={() => setShowTransfer(false)}><X size={19}/></button></div><label className="mb-3 block text-xs">ผู้รับ<select value={recipientId} onChange={event => setRecipientId(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm">{group.members.filter(person => person.id !== currentUser).map(person => <option key={person.id} value={person.id}>{person.name}</option>)}</select></label><label className="block text-xs">จำนวนเงิน<input type="number" min="0.01" step="0.01" value={transferAmount} onChange={event => setTransferAmount(event.target.value)} className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-sm" placeholder="0.00"/></label><button className="mt-4 w-full rounded-xl bg-[#00B8E6] py-2.5 font-bold text-white">ยืนยันการโอน</button></form></div>}
   </main>;

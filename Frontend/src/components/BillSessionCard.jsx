@@ -29,7 +29,7 @@ function ItemAvatarStack({ users = [] }) {
   </span>;
 }
 
-export default function BillSessionCard({ date = '22/10/2026', restaurant = 'รวมแซ่บยกครก', items, members, memberSummaries = [], status, shares, total, currentUser, creatorId = 'thong', paid = {}, busy, onToggle, onClose, onEdit }) {
+export default function BillSessionCard({ date = '22/10/2026', restaurant = 'รวมแซ่บยกครก', items, charges = [], members, memberSummaries = [], status, shares, total, currentUser, creatorId = 'thong', paid = {}, busy, onToggle, onClose, onEdit }) {
   const currentUserId = typeof currentUser === 'string' ? currentUser : currentUser?.id;
   const isCreator = currentUserId === creatorId;
   const sortedMembers = getSortedMembers(members, currentUserId);
@@ -46,6 +46,7 @@ export default function BillSessionCard({ date = '22/10/2026', restaurant = 'ร
         <span className="w-[68px] text-right"><span className="whitespace-nowrap text-[13px] font-medium">{money(item.price)}{assignedUserIds.length > 0 && <small className="ml-1 text-[#4DB6AC]">/{assignedUserIds.length}</small>}</span><small className="ml-auto block w-fit min-w-[38px] rounded-sm bg-[#82D2D1] px-1 text-center text-[9px] leading-tight text-white">{assignedUserIds.length > 0 ? money(item.price / assignedUserIds.length) : money(item.price)}</small></span>
         <span className="flex w-[68px] justify-end"><ItemAvatarStack users={assignedUsers} /></span>
       </div>; })}</div>
+      {charges.map(charge => <div key={`${charge.name}-${charge.amount}`} className="flex justify-between py-1 text-[11px] text-gray-500"><span>{charge.name}</span><span>{money(Number(charge.amount) || 0)}</span></div>)}
       <div className="flex justify-between border-t border-gray-200 py-2.5 text-xs font-bold"><span>ยอดรวม</span><b>{money(total)}</b></div>
       {isCreator && <div className="flex gap-2"><button type="button" onClick={onClose} disabled={busy} className="flex h-[34px] flex-1 items-center justify-center gap-2 rounded-lg bg-[#00B8E6] text-sm font-bold text-white disabled:opacity-60">{busy ? <LoaderCircle size={16} className="animate-spin"/> : <CheckCheck size={16}/>} ปิด Session</button><button type="button" aria-label="แก้ไขบิล" onClick={onEdit} className="grid h-[36px] w-[36px] place-items-center rounded-xl border border-gray-100 bg-white text-[#00B8E6] shadow-sm"><Pencil size={17}/></button></div>}
     </> : <div className="pt-2">{memberSummaries.map(summary => { const person = members.find(member => member.id === summary.userId); if (!person) return null; const isPaid = Boolean(summary.isPaid || paid[summary.userId]); return <div key={summary.userId} className="flex h-[42px] items-center gap-3">
