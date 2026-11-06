@@ -64,12 +64,12 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       const extractedChargesTotal = extractedCharges.reduce((sum, charge) => sum + cents(charge.amount), 0);
       const reportedSubtotal = cents(extracted.subtotal);
       const reportedTotal = cents(extracted.receiptTotal);
-      const subtotalMatches = reportedSubtotal > 0 && Math.abs(reportedSubtotal - extractedItemsSubtotal) <= 1;
+      const subtotalMatches = reportedSubtotal === 0 || Math.abs(reportedSubtotal - extractedItemsSubtotal) <= 1;
       if (subtotalMatches && reportedTotal > 0) {
         const remaining = reportedTotal - extractedItemsSubtotal - extractedChargesTotal;
         if (remaining !== 0) extractedCharges.push({
           id: makeId(),
-          name: remaining < 0 ? 'ปัดเศษ/ปรับยอด' : 'ค่าธรรมเนียมอื่นจากใบเสร็จ',
+          name: 'ส่วนต่างจากยอดสุทธิในใบเสร็จ',
           amount: remaining / 100,
         });
       }
