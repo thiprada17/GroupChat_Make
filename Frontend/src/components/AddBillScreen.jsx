@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Camera, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Camera, LoaderCircle, MoreHorizontal, Pencil, Plus, RotateCcw, X } from 'lucide-react';
 import { scanReceipt } from '../services/aiService.js';
 
 const makeId = () => crypto.randomUUID();
@@ -12,6 +12,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
   const [charges, setCharges] = useState([]);
   const [receiptSummary, setReceiptSummary] = useState(null);
   const [scanning, setScanning] = useState(false);
+  const [showNotBillModal, setShowNotBillModal] = useState(false);
   const [error, setError] = useState('');
   const inputRef = useRef(null);
   const title = groupName || 'ค่ากิน';
@@ -50,6 +51,10 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     setScanning(true);
     try {
       const extracted = await scanReceipt(imageUrl);
+      if (!extracted.isReceipt) {
+        setShowNotBillModal(true);
+        return;
+      }
       setItems(extracted.items.map(item => ({ ...item, price: String(item.price) })));
       const extractedCharges = extracted.charges.map(charge => ({ ...charge, id: makeId(), amount: Number(charge.amount) }));
       const extractedItemsSubtotal = extracted.items.reduce((sum, item) => sum + cents(item.price), 0);
@@ -98,7 +103,7 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
       <div className="absolute inset-x-0 top-0 h-[149px] bg-[#8AE3FF]" />
       <button type="button" onClick={() => inputRef.current?.click()} className="absolute left-1/2 top-[25px] flex h-[228px] w-[205px] -translate-x-1/2 flex-col items-center justify-center overflow-hidden rounded-[22px] border border-gray-100 bg-white shadow-md">
         {receiptImage ? <img src={receiptImage} alt="Uploaded receipt" className="h-full w-full rounded-[22px] object-cover"/> : <><Camera size={39} strokeWidth={1.5} className="mb-1 text-[#7896A0]"/><span className="text-sm font-medium text-[#7896A0]">เพิ่มรูป</span></>}
-        <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={event => loadImage(event.target.files?.[0])}/>
+        <input ref={inputRef} type="file" accept="image/*" className="sr-only" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; loadImage(file); }}/>
       </button>
       <button type="button" aria-label="Upload or rescan receipt" onClick={() => inputRef.current?.click()} className="absolute left-[calc(50%+143px)] top-[182px] grid h-9 w-9 place-items-center rounded-full bg-[#00B8E6] text-white shadow-sm hover:bg-[#00A3CC]"><RotateCcw size={20}/></button>
       {scanning && <span className="absolute left-1/2 top-[267px] z-10 -translate-x-1/2 rounded-full bg-white/95 px-2 py-1 text-[10px] text-[#56838C]"><LoaderCircle size={12} className="mr-1 inline animate-spin"/>กำลังอ่านใบเสร็จ</span>}
@@ -131,6 +136,8 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
     <footer className="flex h-[86px] shrink-0 items-start justify-center bg-white pt-4">
       <button type="button" disabled={busy || scanning} onClick={confirm} className="h-[34px] w-[124px] rounded-full bg-[#00B8E6] text-lg font-bold text-white transition-colors hover:bg-[#00A3CC] disabled:opacity-60">ยืนยัน</button>
     </footer>
+
+    {showNotBillModal && <div className="fixed inset-0 z-50 mx-auto grid w-full max-w-md place-items-center bg-slate-900/50 p-5"><section role="alertdialog" aria-modal="true" aria-labelledby="not-bill-title" className="w-full rounded-2xl bg-white p-5 text-center shadow-xl"><span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-amber-50 text-amber-500"><AlertCircle size={25}/></span><h2 id="not-bill-title" className="mt-3 text-lg font-bold text-[#1A3048]">ไม่สามารถอ่านใบเสร็จได้</h2><p className="mt-2 text-sm leading-relaxed text-slate-600">รูปที่อัปโหลดอาจไม่ใช่ใบเสร็จ หรือรายละเอียดไม่ชัดเจน กรุณาอัปโหลดภาพใบเสร็จที่เห็นรายการและยอดชำระครบถ้วนอีกครั้ง</p><div className="mt-5 flex gap-2"><button type="button" onClick={() => setShowNotBillModal(false)} className="flex-1 rounded-xl border border-gray-200 py-2.5 text-sm font-semibold text-slate-600">ปิด</button><button type="button" onClick={() => { setShowNotBillModal(false); inputRef.current?.click(); }} className="flex-1 rounded-xl bg-[#00B8E6] py-2.5 text-sm font-bold text-white">อัปโหลดรูปใหม่</button></div></section></div>}
   </main>;
 }
 

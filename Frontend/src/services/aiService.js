@@ -30,12 +30,12 @@ export async function scanReceipt(imageDataUrl) {
     .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000)
     .map(item => ({ ...item, id: crypto.randomUUID() }));
 
-  if (!items.length) throw new Error('ไม่พบรายการสินค้าในใบเสร็จ กรุณากรอกเอง');
   const charges = (Array.isArray(result?.charges) ? result.charges : [])
     .map(charge => ({ name: String(charge?.name ?? '').trim(), amount: Number(charge?.amount) }))
     .filter(charge => charge.name && Number.isFinite(charge.amount) && charge.amount >= -1000000 && charge.amount <= 1000000);
 
   return {
+    isReceipt: result?.isReceipt === true && items.length > 0,
     items,
     charges,
     subtotal: Number(result?.subtotal) > 0 ? Number(result.subtotal) : 0,
