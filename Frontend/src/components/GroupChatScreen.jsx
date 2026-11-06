@@ -11,10 +11,10 @@ function Avatar({ user, size = 30 }) {
   return <span className="grid shrink-0 place-items-center rounded-full text-[10px] font-semibold text-white" style={{ background: user?.color || '#204066', width: size, height: size }}>{user?.id === 'thong' ? 't' : ''}</span>;
 }
 
-function ActionBar({ onTransfer, onAddBill }) {
+function ActionBar({ onTransfer, onAddBill, addBillDisabled = false }) {
   return <footer className="relative z-10 flex h-[123px] shrink-0 items-center justify-center gap-20 rounded-t-2xl bg-[#8AE3FF] px-6">
     <button type="button" onClick={onTransfer} className="flex min-w-20 flex-col items-center gap-1 text-[#294E74]"><Wallet size={23} strokeWidth={1.6}/><span className="text-sm">โอนเงิน</span></button>
-    <button type="button" onClick={onAddBill} className="flex min-w-20 flex-col items-center gap-1 text-[#294E74]"><ReceiptText size={23} strokeWidth={1.6}/><span className="text-sm">เพิ่มบิล</span></button>
+    <button type="button" onClick={onAddBill} disabled={addBillDisabled} title={addBillDisabled ? 'รอให้สมาชิกชำระบิลปัจจุบันครบก่อน' : undefined} className="flex min-w-20 flex-col items-center gap-1 text-[#294E74] disabled:cursor-not-allowed disabled:opacity-40"><ReceiptText size={23} strokeWidth={1.6}/><span className="text-sm">เพิ่มบิล</span>{addBillDisabled && <small className="text-[9px]">รอชำระครบ</small>}</button>
   </footer>;
 }
 
@@ -74,7 +74,7 @@ export default function GroupChatScreen({ group, onBack, onOpenSettings, view = 
     </section>
 
     {chat.status === 'open' ? <footer className="relative z-10 flex h-[70px] shrink-0 items-center bg-[#8AE3FF] px-5"><label className="flex h-[39px] w-full items-center rounded-full border border-gray-200 bg-white px-4"><input value={message} onChange={event => setMessage(event.target.value)} onKeyDown={event => event.key === 'Enter' && sendMessage()} className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400" placeholder="พิมพ์ข้อความ"/><button type="button" aria-label="Send" onClick={sendMessage} disabled={!message.trim()} className="grid h-7 w-7 place-items-center text-[#00B8E6] disabled:text-gray-300"><Send size={16}/></button></label></footer>
-      : <ActionBar onTransfer={() => setShowTransfer(true)} onAddBill={() => setShowBill(true)}/>}
+      : <ActionBar onTransfer={() => setShowTransfer(true)} onAddBill={() => setShowBill(true)} addBillDisabled={chat.memberSummaries.some(summary => !summary.isPaid && summary.totalAmount > 0)}/>}
 
     {showBill && <AddBillScreen groupName={group.name} busy={chat.busy} onBack={() => setShowBill(false)} onConfirmBill={async bill => { await chat.startSession(bill, currentUser); setShowBill(false); }} />}
 
