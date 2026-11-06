@@ -55,7 +55,7 @@ export async function analyzeReceipt(request, response) {
       role: 'user',
       parts: [
         {
-          text: 'ตรวจภาพก่อนว่าเป็นใบเสร็จ/บิลที่มีรายการและราคาอ่านได้หรือไม่. ตั้ง isReceipt เป็น true เฉพาะเมื่อเห็นรูปแบบใบเสร็จและอ่านรายการสินค้า/อาหารพร้อมราคาได้อย่างน้อยหนึ่งรายการ; ถ้าไม่ใช่ใบเสร็จ ภาพเบลอ/มืด/ถูกบัง หรืออ่านรูปแบบและรายการไม่ได้ ให้ isReceipt เป็น false และส่ง items กับ charges เป็น array ว่าง. สำหรับภาพที่เป็นใบเสร็จให้อ่านทั้งรายการและส่วนสรุปท้ายใบเสร็จ ห้ามหยุดเมื่อพบ subtotal. items คือสินค้า/อาหารแต่ละบรรทัด โดย price เป็นราคารวมของบรรทัดนั้น (รวมจำนวนชิ้นของบรรทัดแล้ว) ไม่ใช่ราคาต่อชิ้น. charges คือรายการปรับยอดทุกชนิดที่แสดงแยกจากสินค้า เช่น service charge, VAT/TAX, rounding/round off, discount, delivery, surcharge; เก็บชื่อเดิมและจำนวนเงินจริงตามใบเสร็จ ส่วนลดหรือ rounding ที่ลดราคาให้ใช้ amount ติดลบ. ถ้ามีเปอร์เซ็นต์ ให้คำนวณจำนวนเงินจากฐานที่ระบุในใบเสร็จ; ถ้ามีจำนวนเงินจริงให้ใช้จำนวนนั้น. subtotal คือยอดก่อน charges ตามที่พิมพ์ไว้; receiptTotal คือยอดสุทธิที่ต้องจ่าย. ห้ามนำ subtotal, before tax, ยอดรวม หรือยอดชำระมาเป็นสินค้า และห้ามนับค่าเดียวกันซ้ำ. หาก subtotal หรือ receiptTotal อ่านไม่ได้ให้ใส่ 0; หากไม่พบ charges ให้ส่ง array ว่าง. คงภาษาเดิมและอย่าเดารายการอาหารหรือราคา',
+          text: 'ตรวจภาพก่อนว่าเป็นใบเสร็จ/บิลที่มีรายการและราคาอ่านได้หรือไม่. ตั้ง isReceipt เป็น true เฉพาะเมื่อเห็นรูปแบบใบเสร็จและอ่านรายการสินค้า/อาหารพร้อมราคาได้อย่างน้อยหนึ่งรายการ; ถ้าไม่ใช่ใบเสร็จ ภาพเบลอ/มืด/ถูกบัง หรืออ่านรูปแบบและรายการไม่ได้ ให้ isReceipt เป็น false และส่ง items กับ charges เป็น array ว่าง. สำหรับภาพที่เป็นใบเสร็จให้อ่านทั้งรายการและส่วนสรุปท้ายใบเสร็จ ห้ามหยุดเมื่อพบ subtotal. items คือสินค้า/อาหารแต่ละบรรทัด โดย price เป็นราคารวมของบรรทัดนั้น (รวมจำนวนชิ้นของบรรทัดแล้ว) ไม่ใช่ราคาต่อชิ้น. charges คือรายการปรับยอดทุกชนิดที่แสดงแยกจากสินค้า เช่น service charge, VAT/TAX, rounding/round off, discount, delivery, surcharge. ถ้าข้อความบนใบเสร็จระบุ Discount, Promotion, Coupon, Voucher หรือคำว่า ส่วนลด ให้จัดชื่อเป็น ส่วนลด และใส่ amount เป็นค่าติดลบเสมอ แม้ใบเสร็จพิมพ์จำนวนส่วนลดเป็นค่าบวก. rounding ที่ลดราคาให้ใช้ amount ติดลบ. ค่าธรรมเนียมอื่นให้เก็บชื่อเดิมและจำนวนเงินจริงตามใบเสร็จ. ถ้ามีเปอร์เซ็นต์ ให้คำนวณจำนวนเงินจากฐานที่ระบุในใบเสร็จ; ถ้ามีจำนวนเงินจริงให้ใช้จำนวนนั้น. subtotal คือยอดก่อน charges ตามที่พิมพ์ไว้; receiptTotal คือยอดสุทธิที่ต้องจ่าย. ห้ามนำ subtotal, before tax, ยอดรวม หรือยอดชำระมาเป็นสินค้า และห้ามนับค่าเดียวกันซ้ำ. หาก subtotal หรือ receiptTotal อ่านไม่ได้ให้ใส่ 0; หากไม่พบ charges ให้ส่ง array ว่าง. คงภาษาเดิมและอย่าเดารายการอาหารหรือราคา',
         },
         { inlineData: { mimeType: mimeType.toLowerCase(), data: imageData } },
       ],
@@ -87,7 +87,12 @@ export async function analyzeReceipt(request, response) {
       .map(item => ({ name: String(item?.name ?? '').trim(), price: Number(item?.price) }))
       .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000);
     const charges = (Array.isArray(parsed.charges) ? parsed.charges : [])
-      .map(charge => ({ name: String(charge?.name ?? '').trim(), amount: Number(charge?.amount) }))
+      .map(charge => {
+        const name = String(charge?.name ?? '').trim();
+        const amount = Number(charge?.amount);
+        const isDiscount = /(discount|ส่วนลด|coupon|voucher|promo(?:tion)?|rebate)/i.test(name);
+        return { name: isDiscount ? 'ส่วนลด' : name, amount: isDiscount ? -Math.abs(amount) : amount };
+      })
       .filter(charge => charge.name && Number.isFinite(charge.amount) && charge.amount >= -1000000 && charge.amount <= 1000000);
     const subtotal = Number(parsed.subtotal);
     const receiptTotal = Number(parsed.receiptTotal);
