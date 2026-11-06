@@ -11,7 +11,14 @@ export const billService = {
         .map(addon => String(addon ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 80))
         .filter(Boolean)
         .slice(0, 12);
-      return { ...item, name, price, addons };
+      const adjustments = (Array.isArray(item.adjustments) ? item.adjustments : []).map(adjustment => {
+        const adjustmentName = String(adjustment.name ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 60);
+        const amount = Math.round(Number(adjustment.amount) * 100) / 100;
+        if (!adjustmentName || !Number.isFinite(amount) || Math.abs(amount) > 1000000) throw new Error('กรุณาตรวจสอบส่วนลดหรือรายการปรับยอดของเมนู');
+        return { name: adjustmentName, amount };
+      });
+      if (price + adjustments.reduce((sum, adjustment) => sum + adjustment.amount, 0) < 0) throw new Error('ยอดส่วนลดของเมนูต้องไม่มากกว่าราคาเมนู');
+      return { ...item, name, price, addons, adjustments };
     });
     const charges = (bill.charges || []).map(charge => {
       const name = String(charge.name ?? '').replace(/[<>\u0000-\u001f]/g, '').trim().slice(0, 60);

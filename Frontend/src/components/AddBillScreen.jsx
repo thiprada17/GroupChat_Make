@@ -5,6 +5,8 @@ import { scanReceipt } from '../services/aiService.js';
 const makeId = () => crypto.randomUUID();
 const emptyItem = () => ({ id: makeId(), name: '', price: '', addons: [] });
 const cents = amount => Math.round((Number(amount) || 0) * 100);
+const itemGrossCents = item => cents(item.price);
+const itemNetCents = item => cents(item.price) + (item.adjustments || []).reduce((sum, adjustment) => sum + cents(adjustment.amount), 0);
 
 export default function AddBillScreen({ groupName = 'ค่ากิน', onBack, onConfirmBill, onClose, onConfirm, busy = false }) {
   const [receiptImage, setReceiptImage] = useState(null);
@@ -17,12 +19,15 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
   const inputRef = useRef(null);
   const title = groupName || 'ค่ากิน';
   const totalAmount = useMemo(() => {
-    const itemTotal = items.reduce((sum, item) => sum + cents(item.price), 0);
+    const itemTotal = items.reduce((sum, item) => sum + itemNetCents(item), 0);
     const chargeTotal = charges.reduce((sum, charge) => sum + cents(charge.amount), 0);
     return (itemTotal + chargeTotal) / 100;
   }, [items, charges]);
-  const itemsSubtotal = items.reduce((sum, item) => sum + cents(item.price), 0) / 100;
-  const subtotalMismatch = receiptSummary?.subtotal > 0 && Math.abs(cents(receiptSummary.subtotal) - cents(itemsSubtotal)) > 1;
+  const itemsGrossSubtotal = items.reduce((sum, item) => sum + itemGrossCents(item), 0) / 100;
+  const itemsNetSubtotal = items.reduce((sum, item) => sum + itemNetCents(item), 0) / 100;
+  const subtotalMismatch = receiptSummary?.subtotal > 0
+    && Math.abs(cents(receiptSummary.subtotal) - cents(itemsGrossSubtotal)) > 1
+    && Math.abs(cents(receiptSummary.subtotal) - cents(itemsNetSubtotal)) > 1;
   const totalMismatch = receiptSummary?.receiptTotal > 0 && Math.abs(cents(receiptSummary.receiptTotal) - cents(totalAmount)) > 1;
 
   function updateItem(id, field, value) {
@@ -31,6 +36,13 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
 
   function updateCharge(id, amount) {
     setCharges(current => current.map(charge => charge.id === id ? { ...charge, amount } : charge));
+  }
+
+  function updateItemAdjustment(itemId, adjustmentId, amount) {
+    setItems(current => current.map(item => item.id !== itemId ? item : {
+      ...item,
+      adjustments: (item.adjustments || []).map(adjustment => adjustment.id !== adjustmentId ? adjustment : { ...adjustment, amount }),
+    }));
   }
 
   async function loadImage(file) {
@@ -58,15 +70,24 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
         });
         return;
       }
-      setItems(extracted.items.map(item => ({ ...item, price: String(item.price), addons: item.addons || [] })));
+      const extractedItems = extracted.items.map(item => ({
+        ...item,
+        price: String(item.price),
+        addons: item.addons || [],
+        adjustments: (item.adjustments || []).map(adjustment => ({ ...adjustment, id: makeId() })),
+      }));
+      setItems(extractedItems);
       const extractedCharges = extracted.charges.map(charge => ({ ...charge, id: makeId(), amount: Number(charge.amount) }));
-      const extractedItemsSubtotal = extracted.items.reduce((sum, item) => sum + cents(item.price), 0);
+      const extractedItemsGross = extractedItems.reduce((sum, item) => sum + itemGrossCents(item), 0);
+      const extractedItemsNet = extractedItems.reduce((sum, item) => sum + itemNetCents(item), 0);
       const extractedChargesTotal = extractedCharges.reduce((sum, charge) => sum + cents(charge.amount), 0);
       const reportedSubtotal = cents(extracted.subtotal);
       const reportedTotal = cents(extracted.receiptTotal);
-      const subtotalMatches = reportedSubtotal === 0 || Math.abs(reportedSubtotal - extractedItemsSubtotal) <= 1;
+      const subtotalMatches = reportedSubtotal === 0
+        || Math.abs(reportedSubtotal - extractedItemsGross) <= 1
+        || Math.abs(reportedSubtotal - extractedItemsNet) <= 1;
       if (subtotalMatches && reportedTotal > 0) {
-        const remaining = reportedTotal - extractedItemsSubtotal - extractedChargesTotal;
+        const remaining = reportedTotal - extractedItemsNet - extractedChargesTotal;
         if (remaining !== 0) extractedCharges.push({
           id: makeId(),
           name: 'ส่วนต่างจากยอดสุทธิในใบเสร็จ',
@@ -129,13 +150,14 @@ export default function AddBillScreen({ groupName = 'ค่ากิน', onBack
             <button type="button" aria-label="ลบรายการ" onClick={() => removeItem(item.id)} className="ml-1 text-sm text-gray-400 hover:text-red-500"><X size={16}/></button>
           </div>
           {item.addons?.length > 0 && <div className="ml-2 mt-1 border-l-2 border-[#D9EEF2] pl-3 text-xs leading-relaxed text-gray-500">{item.addons.map((addon, index) => <p key={`${item.id}-addon-${index}`}>– {addon}</p>)}</div>}
+          {item.adjustments?.map(adjustment => { const isDiscount = adjustment.name === 'ส่วนลด'; const isNegative = isDiscount || Number(adjustment.amount) < 0; return <label key={adjustment.id} className="ml-2 mt-1 flex items-center justify-between gap-3 border-l-2 border-rose-100 pl-3 text-xs text-rose-600"><span>{adjustment.name}</span><span className="flex items-center gap-1">{isNegative ? '−' : '+'}<input aria-label={`${adjustment.name} สำหรับ ${item.name}`} type="number" min={isNegative ? '0' : undefined} step="0.01" value={isNegative ? Math.abs(Number(adjustment.amount) || 0) : adjustment.amount} onChange={event => updateItemAdjustment(item.id, adjustment.id, isNegative ? -Math.abs(Number(event.target.value) || 0) : event.target.value)} className="w-20 border-b border-rose-200 bg-transparent text-right font-semibold outline-none focus:border-rose-500"/></span></label>; })}
         </div>)}
         <button type="button" onClick={addItem} className="mt-2 inline-flex items-center text-sm font-semibold text-[#00B8E6] underline">+ เพิ่มรายการ</button>
       </div>
       {error && <p role="alert" className="shrink-0 py-2 text-xs text-red-500">{error}</p>}
       <div className="shrink-0 border-y border-gray-200 py-3">
-        {charges.map(charge => <label key={charge.id || `${charge.name}-${charge.amount}`} className="flex items-center justify-between gap-3 py-1 text-sm text-gray-600"><span className="min-w-0 flex-1 truncate">{charge.name}</span><input aria-label={`ยอด ${charge.name}`} type="number" step="0.01" value={charge.amount} onChange={event => updateCharge(charge.id, event.target.value)} className="w-24 border-b border-gray-300 bg-transparent text-right font-semibold text-gray-800 outline-none focus:border-[#00B8E6]"/></label>)}
-        {subtotalMismatch && <p role="status" className="py-2 text-xs leading-relaxed text-amber-700">AI อ่าน subtotal ได้ {Number(receiptSummary.subtotal).toFixed(2)} แต่รวมรายการได้ {itemsSubtotal.toFixed(2)} กรุณาตรวจชื่อหรือราคาของรายการที่อ่านได้</p>}
+        {charges.map(charge => { const isDiscount = charge.name === 'ส่วนลด'; return <label key={charge.id || `${charge.name}-${charge.amount}`} className="flex items-center justify-between gap-3 py-1 text-sm text-gray-600"><span className="min-w-0 flex-1 truncate">{charge.name}</span><input aria-label={`ยอด ${charge.name}`} type="number" min={isDiscount ? '0' : undefined} step="0.01" value={isDiscount ? Math.abs(Number(charge.amount) || 0) : charge.amount} onChange={event => updateCharge(charge.id, isDiscount ? -Math.abs(Number(event.target.value) || 0) : event.target.value)} className="w-24 border-b border-gray-300 bg-transparent text-right font-semibold text-gray-800 outline-none focus:border-[#00B8E6]"/></label>; })}
+        {subtotalMismatch && <p role="status" className="py-2 text-xs leading-relaxed text-amber-700">subtotal บนใบเสร็จไม่ตรงกับยอดรายการที่ AI อ่านได้ กรุณาตรวจชื่อหรือราคาของรายการ</p>}
         {!subtotalMismatch && totalMismatch && <p role="status" className="py-2 text-xs leading-relaxed text-amber-700">ยอดรวมยังไม่ตรงกับใบเสร็จ กรุณาตรวจค่าธรรมเนียมที่อ่านได้</p>}
         <div className="flex items-center justify-between pt-1">
         <span className="text-base font-bold text-gray-800">ยอดรวม</span><strong className="text-xl font-bold text-gray-900">{totalAmount.toFixed(2)}</strong>

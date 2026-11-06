@@ -12,8 +12,17 @@ const receiptSchema = {
           name: { type: 'string' },
           price: { type: 'number' },
           addons: { type: 'array', items: { type: 'string' } },
+          adjustments: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: { name: { type: 'string' }, amount: { type: 'number' } },
+              required: ['name', 'amount'],
+              additionalProperties: false,
+            },
+          },
         },
-        required: ['name', 'price', 'addons'],
+        required: ['name', 'price', 'addons', 'adjustments'],
         additionalProperties: false,
       },
     },
@@ -56,7 +65,7 @@ export async function analyzeReceipt(request, response) {
       role: 'user',
       parts: [
         {
-          text: 'ตรวจภาพก่อนว่าเป็นใบเสร็จ/บิลที่มีรายการและราคาอ่านได้หรือไม่. ตั้ง isReceipt เป็น true เฉพาะเมื่อเห็นรูปแบบใบเสร็จและอ่านรายการสินค้า/อาหารพร้อมราคาได้อย่างน้อยหนึ่งรายการ; ถ้าไม่ใช่ใบเสร็จ ภาพเบลอ/มืด/ถูกบัง หรืออ่านรูปแบบและรายการไม่ได้ ให้ isReceipt เป็น false และส่ง items กับ charges เป็น array ว่าง. สำหรับภาพที่เป็นใบเสร็จให้อ่านทั้งรายการและส่วนสรุปท้ายใบเสร็จ ห้ามหยุดเมื่อพบ subtotal. items คือสินค้า/อาหารแต่ละบรรทัด โดย price เป็นราคารวมของบรรทัดนั้น (รวมจำนวนชิ้นของบรรทัดแล้ว) ไม่ใช่ราคาต่อชิ้น. ถ้ามีบรรทัดย่อยเยื้องหรือขึ้นต้นด้วยขีดใต้ชื่อเมนู และไม่มีราคาแยก ให้ใส่ข้อความเหล่านั้นใน addons ของเมนูหลักตามลำดับ ห้ามสร้างเป็นสินค้าแยก; ถ้าบรรทัดย่อยมีราคาของตัวเองจึงค่อยอ่านเป็นสินค้า/รายการคิดเงินแยก. addons เป็นข้อความเสริมเท่านั้นและรวมอยู่ในราคาเมนูหลักแล้ว. charges คือรายการปรับยอดทุกชนิดที่แสดงแยกจากสินค้า เช่น service charge, VAT/TAX, rounding/round off, discount, delivery, surcharge. ถ้าข้อความบนใบเสร็จระบุ Discount, Promotion, Coupon, Voucher หรือคำว่า ส่วนลด ให้จัดชื่อเป็น ส่วนลด และใส่ amount เป็นค่าติดลบเสมอ แม้ใบเสร็จพิมพ์จำนวนส่วนลดเป็นค่าบวก. rounding ที่ลดราคาให้ใช้ amount ติดลบ. ค่าธรรมเนียมอื่นให้เก็บชื่อเดิมและจำนวนเงินจริงตามใบเสร็จ. ถ้ามีเปอร์เซ็นต์ ให้คำนวณจำนวนเงินจากฐานที่ระบุในใบเสร็จ; ถ้ามีจำนวนเงินจริงให้ใช้จำนวนนั้น. subtotal คือยอดก่อน charges ตามที่พิมพ์ไว้; receiptTotal คือยอดสุทธิที่ต้องจ่าย. ห้ามนำ subtotal, before tax, ยอดรวม หรือยอดชำระมาเป็นสินค้า และห้ามนับค่าเดียวกันซ้ำ. หาก subtotal หรือ receiptTotal อ่านไม่ได้ให้ใส่ 0; หากไม่พบ charges ให้ส่ง array ว่าง. คงภาษาเดิมและอย่าเดารายการอาหารหรือราคา',
+          text: 'ตรวจภาพก่อนว่าเป็นใบเสร็จ/บิลที่มีรายการและราคาอ่านได้หรือไม่. ตั้ง isReceipt เป็น true เฉพาะเมื่อเห็นรูปแบบใบเสร็จและอ่านรายการสินค้า/อาหารพร้อมราคาได้อย่างน้อยหนึ่งรายการ; ถ้าไม่ใช่ใบเสร็จ ภาพเบลอ/มืด/ถูกบัง หรืออ่านรูปแบบและรายการไม่ได้ ให้ isReceipt เป็น false และส่ง items กับ charges เป็น array ว่าง. สำหรับภาพที่เป็นใบเสร็จให้อ่านทั้งรายการและส่วนสรุปท้ายใบเสร็จ ห้ามหยุดเมื่อพบ subtotal. items คือสินค้า/อาหารแต่ละบรรทัด โดย price เป็นราคารวมของบรรทัดนั้น (รวมจำนวนชิ้นของบรรทัดแล้ว) ไม่ใช่ราคาต่อชิ้น. ถ้ามีบรรทัดย่อยเยื้องหรือขึ้นต้นด้วยขีดใต้ชื่อเมนู และไม่มีราคาแยก ให้ใส่ข้อความเหล่านั้นใน addons ของเมนูหลักตามลำดับ ห้ามสร้างเป็นสินค้าแยก; ถ้าบรรทัดย่อยมีราคาของตัวเองจึงค่อยอ่านเป็นสินค้า/รายการคิดเงินแยก. addons เป็นข้อความเสริมเท่านั้นและรวมอยู่ในราคาเมนูหลักแล้ว. ถ้ามีบรรทัดส่วนลด/โปรโมชันติดตามหรืออยู่ใต้เมนูใดก่อนเริ่มเมนูหลักบรรทัดถัดไป ให้ผูกส่วนลดนั้นไว้ใน adjustments ของเมนูที่อยู่ก่อนหน้าเท่านั้น ห้ามใส่เป็นส่วนลดรวมของทั้งบิลและห้ามเฉลี่ยไปยังเมนูอื่น. ใช้กฎนี้กับข้อความเช่น Discount, Promotion, Coupon, Voucher, โปรส่วนลด และส่วนลด. ถ้าจำนวนส่วนลดพิมพ์เป็นค่าบวก ให้แปลง amount เป็นค่าติดลบ; ตั้งชื่อ adjustment เป็น ส่วนลด. ถ้าขอบเขตส่วนลดไม่ชัดว่าใช้กับเมนูใด จึงค่อยใส่เป็นรายการใน charges ระดับทั้งบิล. item adjustments อื่น ๆ ให้ผูกกับเมนูตามตำแหน่งบนใบเสร็จเช่นกัน. charges คือรายการปรับยอดระดับทั้งบิลที่แสดงแยกจากสินค้า เช่น service charge, VAT/TAX, rounding/round off, ส่วนลดรวม, delivery, surcharge. rounding ที่ลดราคาให้ใช้ amount ติดลบ. ค่าธรรมเนียมอื่นให้เก็บชื่อเดิมและจำนวนเงินจริงตามใบเสร็จ. ถ้ามีเปอร์เซ็นต์ ให้คำนวณจำนวนเงินจากฐานที่ระบุในใบเสร็จ; ถ้ามีจำนวนเงินจริงให้ใช้จำนวนนั้น. subtotal คือยอดก่อน charges ตามที่พิมพ์ไว้; receiptTotal คือยอดสุทธิที่ต้องจ่าย. ห้ามนำ subtotal, before tax, ยอดรวม หรือยอดชำระมาเป็นสินค้า และห้ามนับค่าเดียวกันซ้ำ. หาก subtotal หรือ receiptTotal อ่านไม่ได้ให้ใส่ 0; หากไม่พบ charges ให้ส่ง array ว่าง. คงภาษาเดิมและอย่าเดารายการอาหารหรือราคา',
         },
         { inlineData: { mimeType: mimeType.toLowerCase(), data: imageData } },
       ],
@@ -91,6 +100,15 @@ export async function analyzeReceipt(request, response) {
         addons: (Array.isArray(item?.addons) ? item.addons : [])
           .map(addon => String(addon ?? '').trim())
           .filter(Boolean)
+          .slice(0, 12),
+        adjustments: (Array.isArray(item?.adjustments) ? item.adjustments : [])
+          .map(adjustment => {
+            const name = String(adjustment?.name ?? '').trim();
+            const amount = Number(adjustment?.amount);
+            const isDiscount = /(discount|ส่วนลด|coupon|voucher|promo(?:tion)?|rebate)/i.test(name);
+            return { name: isDiscount ? 'ส่วนลด' : name, amount: isDiscount ? -Math.abs(amount) : amount };
+          })
+          .filter(adjustment => adjustment.name && Number.isFinite(adjustment.amount) && Math.abs(adjustment.amount) <= 1000000)
           .slice(0, 12),
       }))
       .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000);

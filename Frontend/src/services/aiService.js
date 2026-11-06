@@ -30,6 +30,9 @@ export async function scanReceipt(imageDataUrl) {
       name: String(item?.name ?? '').trim(),
       price: Number(item?.price),
       addons: (Array.isArray(item?.addons) ? item.addons : []).map(addon => String(addon ?? '').trim()).filter(Boolean),
+      adjustments: (Array.isArray(item?.adjustments) ? item.adjustments : [])
+        .map(adjustment => ({ name: String(adjustment?.name ?? '').trim(), amount: Number(adjustment?.amount) }))
+        .filter(adjustment => adjustment.name && Number.isFinite(adjustment.amount)),
     }))
     .filter(item => item.name && Number.isFinite(item.price) && item.price >= 0 && item.price <= 1000000)
     .map(item => ({ ...item, id: crypto.randomUUID() }));

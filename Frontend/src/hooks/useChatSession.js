@@ -4,6 +4,10 @@ import { chatService } from '../services/chatService.js';
 import { paymentService } from '../services/paymentService.js';
 
 const newId = () => crypto.randomUUID();
+const itemNetAmount = item => {
+  const cents = Math.round(Number(item.price) * 100) + (item.adjustments || []).reduce((sum, adjustment) => sum + Math.round(Number(adjustment.amount) * 100), 0);
+  return cents / 100;
+};
 export default function useChatSession(members, creatorId = 'thong', groupId = 'default') {
   const storageKey = `groupchat.history.v1.${groupId}`;
   const [initialSession] = useState(() => {
@@ -25,17 +29,17 @@ export default function useChatSession(members, creatorId = 'thong', groupId = '
   const [paid, setPaid] = useState(() => initialSession?.paid || {});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const itemSubtotal = items.reduce((sum, item) => sum + Math.round(item.price * 100), 0) / 100;
+  const itemSubtotal = items.reduce((sum, item) => sum + Math.round(itemNetAmount(item) * 100), 0) / 100;
   const chargeTotal = charges.reduce((sum, charge) => sum + Math.round((Number(charge.amount) || 0) * 100), 0) / 100;
   const total = itemSubtotal + chargeTotal;
-  const assignedSubtotal = items.reduce((sum, item) => (item.assignedUserIds || []).length ? sum + Number(item.price) : sum, 0);
+  const assignedSubtotal = items.reduce((sum, item) => (item.assignedUserIds || []).length ? sum + itemNetAmount(item) : sum, 0);
   const memberSummaries = useMemo(() => members
     .filter(member => items.some(item => (item.assignedUserIds || []).includes(member.id)))
     .map(member => {
       const totalAmount = items.reduce((sum, item) => {
         const assignedUserIds = item.assignedUserIds || [];
         if (!assignedUserIds.includes(member.id) || assignedUserIds.length === 0) return sum;
-        return sum + Number(item.price) / assignedUserIds.length;
+        return sum + itemNetAmount(item) / assignedUserIds.length;
       }, 0);
       const feeShare = assignedSubtotal > 0
         ? chargeTotal * totalAmount / assignedSubtotal
